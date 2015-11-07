@@ -132,14 +132,6 @@ module.exports = function() {
 		}
 	}
 	
-	this.pause = function(){
-		pause += 1;
-	}
-
-	this.resume = function(){
-		pause -= 1;
-	}
-
 	this.setLength = function(length) {
 		if (pause === 0) {
 			records.length = length;

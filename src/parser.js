@@ -3,7 +3,6 @@ module.exports = function() {
 	var thisFileName = "parser.js: "
 	var that = this;
 	var id = require("./identifiers.js");
-//	var utils = require("./utilities.js");
 	this.ast = null;
 	this.stats = null;
 	this.trace = null;
@@ -11,7 +10,8 @@ module.exports = function() {
 	var startRule = 0;
 	var opcodes = null;
 	var chars = null;
-	var treeDepth = 0;
+  var treeDepth = 0;
+  var spDepth = 0; /* syntactic predicate depth */
 	var ruleCallbacks = null;
 	var udtCallbacks = null;
 	var rules = null;
@@ -28,6 +28,7 @@ module.exports = function() {
 	var clear = function() {
 		startRule = 0;
 		treeDepth = 0;
+	  spDepth = 0;
 		rules = null;
 		udts = null;
 		chars = null;
@@ -478,7 +479,7 @@ module.exports = function() {
 		}
 
 		// AST
-		astDefined = that.ast && that.ast.ruleDefined(op.index);
+		astDefined = that.ast && (spDepth === 0) && that.ast.ruleDefined(op.index);
 		if (astDefined) {
 			astLength = that.ast.getLength();
 			downIndex = that.ast.down(op.index, rules[op.index].name);
@@ -604,13 +605,9 @@ module.exports = function() {
 		};
 
 		// execute the child opcode
-		if (that.ast !== null) {
-			that.ast.pause();
-		}
+		spDepth += 1;
 		opExecute(opIndex + 1, phraseIndex, prdResult);
-		if (that.ast !== null) {
-			that.ast.resume();
-		}
+    spDepth -= 1;
 
 		// evaluate the result
 		switch (prdResult.state) {
@@ -654,13 +651,9 @@ module.exports = function() {
 		};
 
 		// execute the child opcode
-		if (that.ast !== null) {
-			that.ast.pause();
-		}
+    spDepth += 1;
 		opExecute(opIndex + 1, phraseIndex, prdResult);
-		if (that.ast !== null) {
-			that.ast.resume();
-		}
+    spDepth -= 1;
 
 		// evaluate the result
 		result.phraseLength = prdResult.phraseLength;
