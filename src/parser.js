@@ -19,6 +19,45 @@ module.exports = function() {
 	var syntaxData = null;
 	var maxMatched = 0;
 
+  var evaluateRule = function(ruleIndex, phraseIndex, result) {
+    var functionName = thisFileName + "evaluateRule(): ";
+    var length;
+    if (ruleIndex >= rules.length){
+      throw new Error(functionsName + "rule index: " + ruleIndex + " out of range");
+    }
+    if ((phraseIndex >= chars.length)){
+      throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
+    }
+    // create a dummy RNM operator
+    length = opcodes.length;
+    opcodes.push({
+      type : id.RNM,
+      index : ruleIndex
+    });
+    opExecute(length, phraseIndex, result);
+    opcodes.pop();
+  };
+
+  var evaluateUdt = function(udtIndex, phraseIndex, result) {
+    var functionName = thisFileName + "evaluateUdt(): ";
+    var length;
+    if (udtIndex >= udts.length){
+      throw new Error(functionsName + "udt index: " + udtIndex + " out of range");
+    }
+    if ((phraseIndex >= chars.length)){
+      throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
+    }
+    // create a dummy UDT operator
+    length = opcodes.length;
+    opcodes.push({
+      type : id.UDT,
+      empty: udts[udtIndex].empty,
+      index : udtIndex
+    });
+    opExecute(length, phraseIndex, result);
+    opcodes.pop();
+  };
+
 	/**
 	 * Clear this object of any/all data that has been initialized or added to
 	 * it. Can be called to re-initialize this object for re-use.
@@ -37,46 +76,6 @@ module.exports = function() {
 		udtCallbacks = null;
 		syntaxData = null;
 		opcodes = null;
-	};
-
-	/** ************************************************************************** */
-	// evaluate any rule name
-	// can be called from syntax call back functions for handwritten parsing
-	// ruleIndex - index of the rule to execute (see the opcodes)
-	// phraseIndex - what phrase to parser, offset into the input string
-	// state - array to return the final state (OP_STATE) and number of matched
-	// characters (OP_MATCH)
-	/**
-	 * Evaluates any given rule. This can be called from the syntax callback
-	 * functions to evaluate any rule in the grammar's rule list. Great caution
-	 * should be used. Use of this function will alter the language that the
-	 * parser accepts. The original grammar will still define the rules but use
-	 * of this function will alter the way the rules are combined to form
-	 * language sentences.
-	 * 
-	 * @public
-	 * @param {number}
-	 *            ruleIndex - the index of the rule to evaluate
-	 * @param {number}
-	 *            phraseIndex - the index of the first character in the string
-	 *            to parse
-	 * @param {array}
-	 *            state - array to receive the parser's state on return state[0] =
-	 *            parser state, state[1] = number of matched characters
-	 */
-	var evaluateRule = function(ruleIndex, phraseIndex, result) {
-		var length, valid = (ruleIndex < rules.length)
-				&& (phraseIndex < chars.length);
-		if (valid) {
-			// create a dummy RNM operator
-			length = opcodes.length;
-			opcodes[length] = [];
-			opcodes[length].opNext = length + 1;
-			opcodes[length].type = id.RNM;
-			opcodes[length].ruleIndex = ruleIndex;
-			opExecute(length, phraseIndex, result);
-			opcodes.length = length;
-		}
 	};
 
 	var initializeAst = function() {
@@ -247,7 +246,9 @@ module.exports = function() {
 			state : id.ACTIVE,
 			phraseLength : 0,
 			lostChars: 0,
-			success : false
+			success : false,
+			evalRule: evaluateRule,
+			evalUdt: evaluateUdt
 		};
 
 		clear();
@@ -307,9 +308,9 @@ module.exports = function() {
 	 */
 	var opALT = function(opIndex, phraseIndex, result) {
 		var op = opcodes[opIndex];
-		if (op.type !== id.ALT) {
-			throw new Error('opALT: type: ' + op.type + ': not ALT');
-		}
+//		if (op.type !== id.ALT) {
+//			throw new Error('opALT: type: ' + op.type + ': not ALT');
+//		}
 		for (var i = 0; i < op.children.length; i += 1) {
 			opExecute(op.children[i], phraseIndex, result);
 			if (result.state !== id.NOMATCH) {
@@ -325,9 +326,6 @@ module.exports = function() {
 	var opCAT = function(opIndex, phraseIndex, result) {
 		var op, success, astLength, catResult, catCharIndex, catMatched, childOpIndex, matchedChildren;
 		op = opcodes[opIndex];
-		if (op.type !== id.CAT) {
-			throw new Error('opCAT: type: ' + op.type + ': not CAT');
-		}
 		if(that.ast){
 			astLength = that.ast.getLength();
 		}
@@ -335,7 +333,9 @@ module.exports = function() {
 			state : id.ACTIVE,
 			phraseLength : 0,
 			lostChars: 0,
-			success: false
+			success: false,
+			evalRule: result.evalRule,
+			evalUdt: result.evalUdt
 		};
 		success = true;
 		catCharIndex = phraseIndex;
@@ -373,14 +373,13 @@ module.exports = function() {
 	var opREP = function(opIndex, phraseIndex, result) {
 		var nextResult, nextCharIndex, matchedCount, matchedChars, op, astLength;
 		op = opcodes[opIndex];
-		if (op.type !== id.REP) {
-			throw new Error('opREP: type: ' + op.type + ': not REP');
-		}
 		nextResult = {
 			state : id.ACTIVE,
 			phraseLength : 0,
 			lostChars: 0,
-			success: false
+      success: false,
+      evalRule: result.evalRule,
+      evalUdt: result.evalUdt
 		};
 		nextCharIndex = phraseIndex;
 		matchedCount = 0;
@@ -474,9 +473,6 @@ module.exports = function() {
 	var opRNM = function(opIndex, phraseIndex, result) {
 		var savedOpcodes, downIndex, op, rule, astLength, astDefined;
 		op = opcodes[opIndex];
-		if (op.type !== id.RNM) {
-			throw new Error('opRNM: type: ' + op.type + ': not RNM');
-		}
 
 		// AST
 		astDefined = that.ast && (spDepth === 0) && that.ast.ruleDefined(op.index);
@@ -560,9 +556,6 @@ module.exports = function() {
 	var opUDT = function(opIndex, phraseIndex, result) {
 		var downIndex, astLength, astIndex, op, udt, astDefined;
 		op = opcodes[opIndex];
-		if (op.type !== id.UDT) {
-			throw new Error('opUDT: type: ' + op.type + ': not UDT');
-		}
 
 		// AST
 		astDefined = that.ast && that.ast.udtDefined(op.index);
@@ -594,9 +587,6 @@ module.exports = function() {
 	var opAND = function(opIndex, phraseIndex, result) {
 		var op, prdResult;
 		op = opcodes[opIndex];
-		if (op.type !== id.AND) {
-			throw new Error('opAND: type: ' + op.type + ': not AND');
-		}
 		prdResult = {
 			state : id.ACTIVE,
 			phraseLength : 0,
@@ -640,9 +630,6 @@ module.exports = function() {
 	var opNOT = function(opIndex, phraseIndex, result) {
 		var op, prdResult;
 		op = opcodes[opIndex];
-		if (op.type !== id.NOT) {
-			throw new Error('opNOT: type: ' + op.type + ': not NOT');
-		}
 		prdResult = {
 			state : id.ACTIVE,
 			phraseLength : 0,
@@ -682,9 +669,6 @@ module.exports = function() {
 	 */
 	var opTRG = function(opIndex, phraseIndex, result) {
 		var op = opcodes[opIndex];
-		if (op.type !== id.TRG) {
-			throw new Error('opTRG: type: ' + op.type + ': not TRG');
-		}
 		result.state = id.NOMATCH;
 		result.phraseLength = 0;
 		result.lostChars = 0;
@@ -704,9 +688,6 @@ module.exports = function() {
 	var opTBS = function(opIndex, phraseIndex, result) {
 		var i, op, len;
 		op = opcodes[opIndex];
-		if (op.type !== id.TBS) {
-			throw new Error('opTBS: type: ' + op.type + ': not TBS');
-		}
 		result.state = id.NOMATCH;
 		result.phraseLength = 0;
 		result.lostChars = 0;
@@ -734,9 +715,6 @@ module.exports = function() {
 	var opTLS = function(opIndex, phraseIndex, result) {
 		var i, code, len, op;
 		op = opcodes[opIndex];
-		if (op.type !== id.TLS) {
-			throw new Error('opTLS: type: ' + op.type + ': not TLS');
-		}
 		result.state = id.NOMATCH;
 		result.phraseLength = 0;
 		result.lostChars = 0;
@@ -825,10 +803,6 @@ module.exports = function() {
 		default:
 			ret = false;
 			break;
-		}
-		if ((result.state !== id.MATCH) && (result.state !== id.NOMATCH)
-				&& (result.state !== id.EMPTY)) {
-			throw new Error('opExecute: invalid state returned');
 		}
 		if(phraseIndex + result.phraseLength > maxMatched){
 			maxMatched = phraseIndex + result.phraseLength;
