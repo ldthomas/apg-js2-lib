@@ -2,11 +2,11 @@
   "name": "apg-lib",
   "version": "2.0.0",
   "description": "Library of core parsing modules required by apg and apg-generated parsers.",
-  "main": "./src/index.js",
+  "main": "./src/export.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "apg -v"
   },
-  "files" : ["src", "examples"],
+  "files" : ["src", "index.md", "docco-gen"],
   "keywords": [
     "apg",
     "parser",

@@ -10,7 +10,7 @@ The JavaScript APG Parsing Library contains the basic core support code needed t
 
 github intallation  
 ```
-clone https://github.com/ldthomas/apg-js2-lib.git /path/to/my-copy-of-apg-lib
+git clone https://github.com/ldthomas/apg-js2-lib.git /path/to/my-copy-of-apg-lib
 mkdir my-project 
 cd my-project 
 npm init
