@@ -280,8 +280,8 @@ module.exports = function() {
       phraseLength : 0,
       lostChars : 0,
       success : false,
-      evalRule : evaluateRule,
-      evalUdt : evaluateUdt
+      evaluateRule : evaluateRule,
+      evaluateUdt : evaluateUdt
     };
     /* clear the parser and initialize all of the components */
     clear();
@@ -355,8 +355,8 @@ module.exports = function() {
       phraseLength : 0,
       lostChars : 0,
       success : false,
-      evalRule : result.evalRule,
-      evalUdt : result.evalUdt
+      evaluateRule : result.evaluateRule,
+      evaluateUdt : result.evaluateUdt
     };
     success = true;
     catCharIndex = phraseIndex;
@@ -398,8 +398,8 @@ module.exports = function() {
       phraseLength : 0,
       lostChars : 0,
       success : false,
-      evalRule : result.evalRule,
-      evalUdt : result.evalUdt
+      evaluateRule : result.evaluateRule,
+      evaluateUdt : result.evaluateUdt
     };
     nextCharIndex = phraseIndex;
     matchedCount = 0;
