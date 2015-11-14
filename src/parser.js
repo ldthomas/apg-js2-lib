@@ -275,6 +275,17 @@ module.exports = function() {
   this.parse = function(grammar, startRule, inputChars, callbackData) {
     var functionName, result;
     functionName = thisFileName + "parse(): ";
+    // The `result` object is used to communicate parsing results and states internally as well as
+    // with the user's callback functions. Named `result` early on when only parsing results
+    // were being handled with it, it has since grown to include some additional communication items.
+    // - *state* - the state of the parser 
+    // (see the `identifiers` object in [`apg-lib`](https://github.com/ldthomas/apg-js2-lib))
+    // - *phraseLength* - the number of characters matched if the state is `MATCHED` or `EMPTY`
+    // - *lostChars* - used internally to keep count of backtracked characters
+    // - *evaluateRule* - a reference to this object's `evaluateRule()` function. Can be called from a callback function
+    // (use with extreme caution!)
+    // - *evaluateUdt* - a reference to this object's `evaluateUdt()` function. Can be called from a callback function
+    // (use with extreme caution!)
     result = {
       state : id.ACTIVE,
       phraseLength : 0,

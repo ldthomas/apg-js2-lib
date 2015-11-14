@@ -1,5 +1,5 @@
 **Annotated Table of Contents**<br>
-*JavaScript APG Runtime Library Version 2.0*
+*JavaScript APG Parsing Library Version 2.0*
 
 0. The GitHub & npm README page.
 > [README.md](./README.html)
