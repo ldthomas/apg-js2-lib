@@ -1,24 +1,28 @@
 {
   "name": "apg-lib",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Library of core parsing modules required by apg and apg-generated parsers.",
   "main": "./src/export.js",
   "scripts": {
     "test": "apg -v"
   },
-  "files" : ["src", "index.md", "docco-gen"],
+  "files": [
+    "src",
+    "index.md",
+    "docco-gen"
+  ],
   "keywords": [
     "apg",
     "parser",
     "generator",
     "ABNF"
   ],
-  "repository" :
-  { "type" : "git"
-  , "url" : "https://github.com/ldthomas/apg-js2-lib.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ldthomas/apg-js2-lib.git"
   },
-  "bugs" : {
-  "url" : "https://github.com/ldthomas/apg-js2-lib/issues"
+  "bugs": {
+    "url": "https://github.com/ldthomas/apg-js2-lib/issues"
   },
   "author": "Lowell D. Thomas <lowell@coasttocoastresearch.com>",
   "license": "BSD-3-Clause"
