@@ -31,6 +31,8 @@ module.exports = function() {
   var rules = null;
   var udts = null;
   var chars = null;
+  var charsFirst = 0;
+  var charsLength = 0;
   var nodeCount = 0;
   var nodesDefined = [];
   var nodeCallbacks = [];
@@ -38,8 +40,9 @@ module.exports = function() {
   var records = [];
   this.callbacks = [];
   this.astObject = "astObject";
-  // Called by the parser to define the rule names, `UDT`s and the input string for this `AST`.
-  this.init = function(rulesIn, udtsIn, charsIn) {
+  // Called by the parser to define the rule names, `UDT`s and the input string
+  // for this `AST`.
+  this.init = function(rulesIn, udtsIn, charsIn, beg, len) {
     stack.length = 0;
     records.length = 0;
     nodesDefined.length = 0;
@@ -47,6 +50,8 @@ module.exports = function() {
     rules = rulesIn;
     udts = udtsIn;
     chars = charsIn;
+    charsFirst = beg;
+    charsLength = len;
     var i, list = [];
     for (i = 0; i < rules.length; i += 1) {
       list.push(rules[i].lower);
@@ -75,15 +80,18 @@ module.exports = function() {
       }
     }
   }
-  // Called by the parser's `RNM` operator to see if there is an `AST` node defined for this rule name.
+  // Called by the parser's `RNM` operator to see if there is an `AST` node
+  // defined for this rule name.
   this.ruleDefined = function(index) {
     return nodesDefined[index] === false ? false : true;
   }
-  // Called by the parser's `UDT` operator to see if there is an `AST` node defined for this `UDT` name.
+  // Called by the parser's `UDT` operator to see if there is an `AST` node
+  // defined for this `UDT` name.
   this.udtDefined = function(index) {
     return nodesDefined[rules.length + index] === false ? false : true;
   }
-  // Called by the parser's `RNM` and `UDT` operators to build a node record for traversing down the `AST`.
+  // Called by the parser's `RNM` and `UDT` operators to build a node record for
+  // traversing down the `AST`.
   this.down = function(callbackIndex, name) {
     var thisIndex = records.length;
     stack.push(thisIndex);
@@ -99,7 +107,8 @@ module.exports = function() {
     });
     return thisIndex;
   };
-  // Called by the parser's `RNM` and `UDT` operators to build a node record for traversing up the `AST`.
+  // Called by the parser's `RNM` and `UDT` operators to build a node record for
+  // traversing up the `AST`.
   this.up = function(callbackIndex, name, phraseIndex, phraseLength) {
     var thisIndex = records.length;
     var thatIndex = stack.pop();
@@ -157,7 +166,8 @@ module.exports = function() {
     }
   };
   // Called by the parser to get the length of the records array.
-  // The array length will have to be reset to this with `setLength()` on backtracking.
+  // The array length will have to be reset to this with `setLength()` on
+  // backtracking.
   this.getLength = function() {
     return records.length;
   };
@@ -175,7 +185,7 @@ module.exports = function() {
     var maxLine = 30;
     var i;
     depth += 2;
-    var end = Math.min(chars.length, beg + len);
+    var end = Math.min(charsLength, beg + len);
     xml += indent(depth);
     for (i = beg; i < end; i += 1) {
       if (i > beg) {
@@ -190,15 +200,16 @@ module.exports = function() {
     return xml;
   }
   // Generate an `XML` version of the `AST`.
-  // Useful if you want to use a special or favorite XML parser to translate the `AST`.
+  // Useful if you want to use a special or favorite XML parser to translate the
+  // `AST`.
   this.displayXml = function() {
     var xml = "";
     var i, j, depth = 0;
     xml += '<?xml version="1.0" encoding="utf-8"?>\n';
     xml += '<root nodes="' + records.length / 2 + '" characters="'
-        + chars.length + '">\n';
+        + charsLength + '">\n';
     xml += '<!-- input string character codes, comma-delimited UTF-32 integers -->\n';
-    xml += phrase(chars, depth, 0, chars.length);
+    xml += phrase(chars, depth, charsFirst, charsLength);
     records.forEach(function(rec, index) {
       if (rec.state === id.SEM_PRE) {
         depth += 1;
@@ -215,5 +226,30 @@ module.exports = function() {
 
     xml += '</root>\n';
     return xml;
+  }
+  // Generate a JavaScript object version of the `AST`.
+  this.phrases = function(obj) {
+    var i, j, str, beg, end, record;
+    if(typeof(obj) !== "object" || obj == null){
+      return;
+    }
+    for(i = 0; i < records.length; i += 1){
+      record = records[i];
+      if (record.state === id.SEM_PRE) {
+        if(Array.isArray(obj[record.name]) === false){
+          obj[record.name] = [];
+        }
+        str = "";
+        end = record.phraseIndex + record.phraseLength
+        for(j = record.phraseIndex; j < end; j += 1){
+          str += String.fromCharCode(chars[j]);
+        }
+        obj[record.name].push({
+          phrase : str,
+          index : record.phraseIndex
+//          length : record.phraseLength
+        });
+      }
+    }
   }
 }

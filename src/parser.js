@@ -20,7 +20,11 @@ module.exports = function() {
   var startRule = 0;
   var opcodes = null;
   var chars = null;
+  var charsFirst = 0;
+  var charsLength = 0;
   var treeDepth = 0;
+  var maxTreeDepth = 0;
+  var nodeHits = 0;
   var spDepth = 0; /* syntactic predicate depth */
   var ruleCallbacks = null;
   var udtCallbacks = null;
@@ -28,7 +32,8 @@ module.exports = function() {
   var udts = null;
   var syntaxData = null;
   var maxMatched = 0;
-
+  var limitTreeDepth = Infinity;
+  var limitNodeHits = Infinity;
   // Evaluates any given rule. This can be called from the syntax callback
   // functions to evaluate any rule in the grammar's rule list. Great caution
   // should be used. Use of this function will alter the language that the
@@ -37,12 +42,10 @@ module.exports = function() {
     var functionName = thisFileName + "evaluateRule(): ";
     var length;
     if (ruleIndex >= rules.length) {
-      throw new Error(functionsName + "rule index: " + ruleIndex
-          + " out of range");
+      throw new Error(functionsName + "rule index: " + ruleIndex + " out of range");
     }
-    if ((phraseIndex >= chars.length)) {
-      throw new Error(functionsName + "phrase index: " + phraseIndex
-          + " out of range");
+    if ((phraseIndex >= charsLength)) {
+      throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
     opcodes.push({
@@ -60,12 +63,10 @@ module.exports = function() {
     var functionName = thisFileName + "evaluateUdt(): ";
     var length;
     if (udtIndex >= udts.length) {
-      throw new Error(functionsName + "udt index: " + udtIndex
-          + " out of range");
+      throw new Error(functionsName + "udt index: " + udtIndex + " out of range");
     }
-    if ((phraseIndex >= chars.length)) {
-      throw new Error(functionsName + "phrase index: " + phraseIndex
-          + " out of range");
+    if ((phraseIndex >= charsLength)) {
+      throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
     opcodes.push({
@@ -76,12 +77,15 @@ module.exports = function() {
     opExecute(length, phraseIndex, result);
     opcodes.pop();
   };
-  // Clears this object of any/all data that has been initialized or added to it.
+  // Clears this object of any/all data that has been initialized or added to
+  // it.
   // Called by `parse()` on initialization, allowing this object to be re-used
   // for multiple parsing calls.
   var clear = function() {
     startRule = 0;
     treeDepth = 0;
+    maxTreeDepth = 0;
+    nodeHits = 0;
     spDepth = 0;
     rules = null;
     udts = null;
@@ -109,7 +113,7 @@ module.exports = function() {
       break;
     }
     if (that.ast !== null) {
-      that.ast.init(rules, udts, chars);
+      that.ast.init(rules, udts, chars, charsFirst, charsLength);
     }
   }
   /* called by `parse()` to initialize the trace object, if one has been defined */
@@ -129,11 +133,14 @@ module.exports = function() {
       break;
     }
     if (that.trace !== null) {
-      that.trace.init(rules, udts, chars);
+      that.trace.init(rules, udts, chars, charsFirst, charsLength);
     }
 
   }
-  /* called by `parse()` to initialize the statistics object, if one has been defined */
+  /*
+   * called by `parse()` to initialize the statistics object, if one has been
+   * defined
+   */
   var initializeStats = function() {
     var functionName = thisFileName + "initializeStats(): ";
     while (true) {
@@ -172,8 +179,7 @@ module.exports = function() {
     var start = null;
     if (typeof (startRule) === "number") {
       if (startRule >= rules.length) {
-        throw new Error(functionName + "start rule index too large: max: "
-            + rules.length + ": index: " + startRule);
+        throw new Error(functionName + "start rule index too large: max: " + rules.length + ": index: " + startRule);
       }
       start = startRule;
     } else if (typeof (startRule) === "string") {
@@ -185,17 +191,18 @@ module.exports = function() {
         }
       }
       if (start === null) {
-        throw new Error(functionName + "start rule name '" + startRule
-            + "' not recognized");
+        throw new Error(functionName + "start rule name '" + startRule + "' not recognized");
       }
     } else {
-      throw new Error(functionName + "type of start rule '"
-          + typeof (startRule) + "' not recognized");
+      throw new Error(functionName + "type of start rule '" + typeof (startRule) + "' not recognized");
     }
     return start;
   }
-  /* called by `parse()` to initialize the array of characters codes representing the input string */
-  var initializeInputChars = function(input) {
+  /*
+   * called by `parse()` to initialize the array of characters codes
+   * representing the input string
+   */
+  var initializeInputChars = function(input, beg, len) {
     var functionName = thisFileName + "initializeInputChars(): ";
     if (input === undefined) {
       throw new Error(functionName + "input string is undefined");
@@ -212,8 +219,28 @@ module.exports = function() {
       }
     }
     chars = input;
+    if (typeof (beg) === "number") {
+      beg = Math.floor(beg);
+      if (beg < 0 || beg > chars.length) {
+        throw Error(functionName + "beginning input character out of range: " + beg);
+      }
+      charsFirst = beg;
+    }
+    if (typeof (len) === "number") {
+      len = Math.floor(len);
+      if (len < 0) {
+        charsLength = chars.length;
+      } else if ((charsFirst + len) > chars.length) {
+        throw Error(functionName + "last input character out of range: " + (charsFirst + len));
+      } else {
+        charsLength = charsFirst + len;
+      }
+    }
   }
-   /* called by `parse()` to initialize the user-written, syntax callback functions, if any */
+  /*
+   * called by `parse()` to initialize the user-written, syntax callback
+   * functions, if any
+   */
   var initializeCallbacks = function() {
     var functionName = thisFileName + "initializeCallbacks(): ";
     var i;
@@ -235,8 +262,7 @@ module.exports = function() {
     for ( var index in that.callbacks) {
       i = list.indexOf(index);
       if (i < 0) {
-        throw new Error(functionName + "syntax callback '" + index
-            + "' not a rule or udt name");
+        throw new Error(functionName + "syntax callback '" + index + "' not a rule or udt name");
       }
       func = that.callbacks[index];
       if (func === false) {
@@ -249,56 +275,98 @@ module.exports = function() {
           udtCallbacks[i - rules.length] = func;
         }
       } else {
-        throw new Error(functionName + "syntax callback[" + index
-            + "] must be function reference or 'false'");
+        throw new Error(functionName + "syntax callback[" + index + "] must be function reference or 'false'");
       }
     }
     /* make sure all udts have been defined - the parser can't work without them */
     for (i = 0; i < udts.length; i += 1) {
       if (udtCallbacks[i] === null) {
-        throw new Error(functionName
-            + "all UDT callbacks must be defined. UDT callback["
-            + udts[i].lower + "] not a function reference");
+        throw new Error(functionName + "all UDT callbacks must be defined. UDT callback[" + udts[i].lower
+            + "] not a function reference");
       }
     }
   }
+  // Set the maximum parse tree depth allowed. The default is `Infinity`.
+  // A limit is not normally needed, but can be used to protect against
+  // a pathological grammar exceeding
+  // the call stack depth.
+  this.setMaxTreeDepth = function(depth) {
+    if (typeof (depth) !== "number") {
+      throw new Error("parser: max tree depth must be integer > 0: " + depth);
+    }
+    limitTreeDepth = Math.floor(depth);
+    if (limitTreeDepth <= 0) {
+      throw new Error("parser: max tree depth must be integer > 0: " + depth);
+    }
+  }
+  // Set the maximum number of node hit (opcode function calls) allowed.
+  // The default is `Infinity`.
+  // A limit is not normally needed, but can be used to protect against
+  // a runaway exponential or pathological grammar.
+  this.setMaxNodeHits = function(depth) {
+    if (typeof (depth) !== "number") {
+      throw new Error("parser: max node hits must be integer > 0: " + depth);
+    }
+    limitNodeHits = Math.floor(depth);
+    if (limitNodeHits <= 0) {
+      throw new Error("parser: max node hits must be integer > 0: " + depth);
+    }
+  }
+  this.parse = function(grammar, startRule, inputChars, callbackData) {
+    clear();
+    initializeInputChars(inputChars, 0, -1);
+    return privateParse(grammar, startRule, callbackData);
+  }
+  this.parseSubstring = function(grammar, startRule, inputChars, inputIndex, inputLength, callbackData) {
+    clear();
+    initializeInputChars(inputChars, inputIndex, inputLength);
+    return privateParse(grammar, startRule, callbackData);
+  }
   // This is the main function, called to parse an input string.
   // <ul>
-  // <li>*grammar* - an instantiated grammar object - the output of `apg` for a specific SABNF grammar</li>
-  // <li>*startRule* - the rule name or rule index to be used as the root of the parse tree.
+  // <li>*grammar* - an instantiated grammar object - the output of `apg` for a
+  // specific SABNF grammar</li>
+  // <li>*startRule* - the rule name or rule index to be used as the root of the
+  // parse tree.
   // This is usually the first rule, index = 0, of the grammar
   // but can be any rule defined in the above grammar object.</li>
-  // <li>*inputChars* - an array of integer character codes representing the input string to be parsed</li>
-  // <li>*callbackData* - user-defined data object to be passed to the user's callback functions.
-  //  This is not used by the parser in any way, merely passed on to the user. May be `null` or omitted.</li>
+  // <li>*inputChars* - an array of integer character codes representing the
+  // input string to be parsed</li>
+  // <li>*callbackData* - user-defined data object to be passed to the user's
+  // callback functions.
+  // This is not used by the parser in any way, merely passed on to the user.
+  // May be `null` or omitted.</li>
   // </ul>
-  this.parse = function(grammar, startRule, inputChars, callbackData) {
+  var privateParse = function(grammar, startRule, callbackData) {
     var functionName, result;
     functionName = thisFileName + "parse(): ";
-    // The `result` object is used to communicate parsing results and states internally as well as
-    // with the user's callback functions. Named `result` early on when only parsing results
-    // were being handled with it, it has since grown to include some additional communication items.
-    // - *state* - the state of the parser 
-    // (see the `identifiers` object in [`apg-lib`](https://github.com/ldthomas/apg-js2-lib))
-    // - *phraseLength* - the number of characters matched if the state is `MATCHED` or `EMPTY`
-    // - *lostChars* - used internally to keep count of backtracked characters
-    // - *evaluateRule* - a reference to this object's `evaluateRule()` function. Can be called from a callback function
+    // The `result` object is used to communicate parsing results and states
+    // internally as well as
+    // with the user's callback functions. Named `result` early on when only
+    // parsing results
+    // were being handled with it, it has since grown to include some additional
+    // communication items.
+    // - *state* - the state of the parser
+    // (see the `identifiers` object in
+    // [`apg-lib`](https://github.com/ldthomas/apg-js2-lib))
+    // - *phraseLength* - the number of characters matched if the state is
+    // `MATCHED` or `EMPTY`
+    // - *evaluateRule* - a reference to this object's `evaluateRule()`
+    // function. Can be called from a callback function
     // (use with extreme caution!)
-    // - *evaluateUdt* - a reference to this object's `evaluateUdt()` function. Can be called from a callback function
+    // - *evaluateUdt* - a reference to this object's `evaluateUdt()` function.
+    // Can be called from a callback function
     // (use with extreme caution!)
     result = {
       state : id.ACTIVE,
       phraseLength : 0,
-      lostChars : 0,
       success : false,
       evaluateRule : evaluateRule,
       evaluateUdt : evaluateUdt
     };
     /* clear the parser and initialize all of the components */
-    clear();
     initializeGrammar(grammar);
     startRule = initializeStartRule(startRule);
-    initializeInputChars(inputChars);
     initializeCallbacks();
     initializeTrace();
     initializeStats();
@@ -312,7 +380,7 @@ module.exports = function() {
       index : startRule
     } ];
     /* execute the start rule */
-    opExecute(0, 0, result);
+    opExecute(0, charsFirst, result);
     opcodes = null;
     /* test and return the result */
     switch (result.state) {
@@ -324,7 +392,7 @@ module.exports = function() {
       break;
     case id.EMPTY:
     case id.MATCH:
-      if (result.phraseLength === chars.length) {
+      if (result.phraseLength === (charsLength - charsFirst)) {
         result.success = true;
       } else {
         result.success = false;
@@ -334,8 +402,11 @@ module.exports = function() {
     return {
       success : result.success,
       state : result.state,
-      length : chars.length,
-      matched : maxMatched
+      length : charsLength - charsFirst,
+      matched : result.phraseLength,
+      maxMatched : maxMatched - charsFirst,
+      maxTreeDepth : maxTreeDepth,
+      nodeHits : nodeHits
     };
   };
 
@@ -364,7 +435,6 @@ module.exports = function() {
     catResult = {
       state : id.ACTIVE,
       phraseLength : 0,
-      lostChars : 0,
       success : false,
       evaluateRule : result.evaluateRule,
       evaluateUdt : result.evaluateUdt
@@ -386,11 +456,9 @@ module.exports = function() {
     if (success) {
       result.state = catMatched === 0 ? id.EMPTY : id.MATCH;
       result.phraseLength = catMatched;
-      result.lostChars = 0;
     } else {
       result.state = id.NOMATCH;
       result.phraseLength = 0;
-      result.lostChars = catMatched;
     }
     if (that.ast && result.state === id.NOMATCH) {
       that.ast.setLength(astLength);
@@ -407,7 +475,6 @@ module.exports = function() {
     nextResult = {
       state : id.ACTIVE,
       phraseLength : 0,
-      lostChars : 0,
       success : false,
       evaluateRule : result.evaluateRule,
       evaluateUdt : result.evaluateUdt
@@ -419,7 +486,7 @@ module.exports = function() {
       astLength = that.ast.getLength();
     }
     while (true) {
-      if (nextCharIndex > chars.length) {
+      if (nextCharIndex > charsLength) {
         /* exit on end of input string */
         break;
       }
@@ -441,19 +508,16 @@ module.exports = function() {
         break;
       }
     }
-    /* evaluate the match count according to the min, max values*/
+    /* evaluate the match count according to the min, max values */
     if (nextResult.state === id.EMPTY) {
       result.state = (matchedChars === 0) ? id.EMPTY : id.MATCH;
       result.phraseLength = matchedChars;
-      result.lostChars = 0;
     } else if (matchedCount >= op.min) {
       result.state = (matchedChars === 0) ? id.EMPTY : id.MATCH;
       result.phraseLength = matchedChars;
-      result.lostChars = 0;
     } else {
       result.state = id.NOMATCH;
       result.phraseLength = 0;
-      result.lostChars = matchedChars;
     }
     if (that.ast && result.state === id.NOMATCH) {
       that.ast.setLength(astLength);
@@ -468,8 +532,7 @@ module.exports = function() {
       if (down === true) {
         result.phraseLength = 0;
       } else {
-        throw new Error(thisFileName + "opRNM(" + rule.name
-            + "): callback function return error. ACTIVE state not allowed.");
+        throw new Error(thisFileName + "opRNM(" + rule.name + "): callback function return error. ACTIVE state not allowed.");
       }
       break;
     case id.EMPTY:
@@ -483,27 +546,30 @@ module.exports = function() {
     case id.NOMATCH:
       break;
     default:
-      throw new Error(thisFileName + "opRNM(" + rule.name
-          + "): callback function return error. Unrecognized return state: "
+      throw new Error(thisFileName + "opRNM(" + rule.name + "): callback function return error. Unrecognized return state: "
           + result.state);
       break;
     }
   }
   // The `RNM` operator<br>
-  // If there is no callback function defined for this rule and no `AST` object defined
+  // If there is no callback function defined for this rule and no `AST` object
+  // defined
   // this operator will simply act as a root node for a sub-parse tree and
   // return the matched phrase to its parent.
   // However, its larger responsibility is calling the user's callback functions
   // and the collection of `AST` nodes.
-  // Note that the `AST` is a separate object, but `RNM` calls its functions to create its nodes.
+  // Note that the `AST` is a separate object, but `RNM` calls its functions to
+  // create its nodes.
   // See [`ast.js`](./ast.html) for usage.
   var opRNM = function(opIndex, phraseIndex, result) {
     var savedOpcodes, downIndex, op, rule, astLength, astDefined;
     op = opcodes[opIndex];
-    /* AST node creation only if an AST object is defined,
-       and an AST node for this rule is defined.
-       Note also that AST node creation is supressed when parsing a syntactic predicate
-       since in that case the nodes are guaranteed to be removed by backtracking */
+    /*
+     * AST node creation only if an AST object is defined, and an AST node for
+     * this rule is defined. Note also that AST node creation is supressed when
+     * parsing a syntactic predicate since in that case the nodes are guaranteed
+     * to be removed by backtracking
+     */
     astDefined = that.ast && (spDepth === 0) && that.ast.ruleDefined(op.index);
     if (astDefined) {
       astLength = that.ast.getLength();
@@ -530,14 +596,16 @@ module.exports = function() {
         callback(result, chars, phraseIndex, syntaxData);
         validateRnmCallbackResult(rule, result, false);
       }
-      /* implied else clause: just accept the callback result - RNM acting as UDT */
+      /*
+       * implied else clause: just accept the callback result - RNM acting as
+       * UDT
+       */
     }
     if (astDefined) {
       if (result.state === id.NOMATCH) {
         that.ast.setLength(astLength);
       } else {
-        that.ast.up(op.index, rules[op.index].name, phraseIndex,
-            result.phraseLength);
+        that.ast.up(op.index, rules[op.index].name, phraseIndex, result.phraseLength);
       }
     }
   };
@@ -547,13 +615,11 @@ module.exports = function() {
   var validateUdtCallbackResult = function(udt, result) {
     switch (result.state) {
     case id.ACTIVE:
-      throw new Error(thisFileName + "opUDT(" + udt.name
-          + "): callback function return error. ACTIVE state not allowed.");
+      throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. ACTIVE state not allowed.");
       break;
     case id.EMPTY:
       if (udt.empty === false) {
-        throw new Error(thisFileName + "opUDT(" + udt.name
-            + "): callback function return error. May not return EMPTY.");
+        throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. May not return EMPTY.");
       } else {
         result.phraseLength = 0;
       }
@@ -561,8 +627,7 @@ module.exports = function() {
     case id.MATCH:
       if (result.phraseLength === 0) {
         if (udt.empty === false) {
-          throw new Error(thisFileName + "opUDT(" + udt.name
-              + "): callback function return error. May not return EMPTY.");
+          throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. May not return EMPTY.");
         } else {
           result.state = id.EMPTY;
         }
@@ -571,15 +636,16 @@ module.exports = function() {
     case id.NOMATCH:
       break;
     default:
-      throw new Error(thisFileName + "opUDT(" + udt.name
-          + "): callback function return error. Unrecognized return state: "
+      throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. Unrecognized return state: "
           + result.state);
       break;
     }
   }
   // The `UDT` operator<br>
-  // Simply calls the user's callback function, but operates like `RNM` with regard to the `AST`.
-  // There is some ambiguity here. `UDT`s act as terminals for phrase recognition but as named rules
+  // Simply calls the user's callback function, but operates like `RNM` with
+  // regard to the `AST`.
+  // There is some ambiguity here. `UDT`s act as terminals for phrase
+  // recognition but as named rules
   // for `AST` nodes.
   // See [`ast.js`](./ast.html) for usage.
   var opUDT = function(opIndex, phraseIndex, result) {
@@ -598,8 +664,7 @@ module.exports = function() {
       if (result.state === id.NOMATCH) {
         that.ast.setLength(astLength);
       } else {
-        that.ast.up(astIndex, udts[op.index].name, phraseIndex,
-            result.phraseLength);
+        that.ast.up(astIndex, udts[op.index].name, phraseIndex, result.phraseLength);
       }
     }
   };
@@ -613,7 +678,6 @@ module.exports = function() {
     prdResult = {
       state : id.ACTIVE,
       phraseLength : 0,
-      lostChars : 0,
       success : false
     };
     spDepth += 1;
@@ -623,17 +687,14 @@ module.exports = function() {
     case id.EMPTY:
       result.state = id.EMPTY;
       result.phraseLength = 0;
-      result.lostChars = 0;
       break;
     case id.MATCH:
       result.state = id.EMPTY;
       result.phraseLength = 0;
-      result.lostChars = prdResult.phraseLength;
       break;
     case id.NOMATCH:
       result.state = id.NOMATCH;
       result.phraseLength = 0;
-      result.lostChars = 0;
       break;
     default:
       throw [ 'opAND: invalid state ' + prdResult.state ];
@@ -650,7 +711,6 @@ module.exports = function() {
     prdResult = {
       state : id.ACTIVE,
       phraseLength : 0,
-      lostChars : 0,
       success : false
     };
     spDepth += 1;
@@ -662,12 +722,10 @@ module.exports = function() {
     case id.MATCH:
       result.state = id.NOMATCH;
       result.phraseLength = 0;
-      result.lostChars = prdResult.phraseLength;
       break;
     case id.NOMATCH:
       result.state = id.EMPTY;
       result.phraseLength = 0;
-      result.lostChars = 0;
       break;
     default:
       throw [ 'opNOT: invalid state ' + prdResult.state ];
@@ -680,8 +738,7 @@ module.exports = function() {
     var op = opcodes[opIndex];
     result.state = id.NOMATCH;
     result.phraseLength = 0;
-    result.lostChars = 0;
-    if (phraseIndex < chars.length) {
+    if (phraseIndex < charsLength) {
       if (op.min <= chars[phraseIndex] && chars[phraseIndex] <= op.max) {
         result.state = id.MATCH;
         result.phraseLength = 1;
@@ -691,7 +748,8 @@ module.exports = function() {
   // The `TBS` operator<br>
   // Matches its pre-defined phrase against the input string.
   // All characters must match exactly.
-  // Case-sensitive literal strings (`'string'`) are translated to `TBS` operators
+  // Case-sensitive literal strings (`'string'`) are translated to `TBS`
+  // operators
   // by `apg`.
   // Phrase length of zero is not allowed.
   // Empty phrases can only be defined with `TLS` operators.
@@ -700,9 +758,8 @@ module.exports = function() {
     op = opcodes[opIndex];
     result.state = id.NOMATCH;
     result.phraseLength = 0;
-    result.lostChars = 0;
     len = op.string.length;
-    if ((phraseIndex + len) <= chars.length) {
+    if ((phraseIndex + len) <= charsLength) {
       for (i = 0; i < len; i += 1) {
         if (chars[phraseIndex + i] !== op.string[i]) {
           break;
@@ -725,11 +782,10 @@ module.exports = function() {
     op = opcodes[opIndex];
     result.state = id.NOMATCH;
     result.phraseLength = 0;
-    result.lostChars = 0;
     len = op.string.length;
     if (len === 0) {
       result.state = id.EMPTY;
-    } else if ((phraseIndex + len) <= chars.length) {
+    } else if ((phraseIndex + len) <= charsLength) {
       for (i = 0; i < len; i += 1) {
         code = chars[phraseIndex + i];
         if (code >= 65 && code <= 90) {
@@ -750,14 +806,24 @@ module.exports = function() {
   // for tracing and statistics gathering functions to be called.
   // Tracing and statistics are handled in separate objects.
   // However, the parser calls their API to build the object data records.
-  // See [`trace.js`](./trace.html) and [`stats.js`](./stats.html) for their usage.
+  // See [`trace.js`](./trace.html) and [`stats.js`](./stats.html) for their
+  // usage.
   var opExecute = function(opIndex, phraseIndex, result) {
     var op, ret = true;
     op = opcodes[opIndex];
+    nodeHits += 1;
+    if (nodeHits > limitNodeHits) {
+      throw new Error("parser: maximum number of node hits exceeded: " + limitNodeHits);
+    }
     treeDepth += 1;
+    if (treeDepth > maxTreeDepth) {
+      maxTreeDepth = treeDepth;
+      if (maxTreeDepth > limitTreeDepth) {
+        throw new Error("parser: maximum parse tree depth exceeded: " + limitTreeDepth);
+      }
+    }
     result.state = id.ACTIVE;
     result.phraseLength = 0;
-    result.lostChars = 0;
     result.success = false;
     if (that.trace !== null) {
       /* collect the trace record for down the parse tree */

@@ -37,7 +37,7 @@
 //
 // Trace records for the non-rule name operators are filtered in a similar manner. To collect records
 // for a specified few of them use:<br>
-// `trace.filter.operators["TBS"]`<br>
+// `trace.filter.operators["TBS"] = true`<br>
 // for example to save all `TBS` node records. Similarly,<br>
 // the special operator `<ALL>` will turn on tracing of all non-rule name operators.<br>
 // The special rule name `<NONE>` will turn off all non-rule operators (default).
@@ -67,6 +67,8 @@ module.exports = function() {
   var treeDepth = 0;
   var lineStack = [];
   var chars = null;
+  var charsFirst = 0;
+  var charsLength = 0;
   var rules = null;
   var udts = null;
   var operatorFilter = [];
@@ -219,13 +221,15 @@ module.exports = function() {
     return maxLines;
   }
   // Called only by the `parser.js` object. No verification of input.
-  this.init = function(rulesIn, udtsIn, charsIn) {
+  this.init = function(rulesIn, udtsIn, charsIn, beg, len) {
     lines.length = 0;
     lineStack.length = 0;
     totalRecords = 0;
     filteredRecords = 0;
     treeDepth = 0;
     chars = charsIn;
+    charsFirst = beg;
+    charsLength = len;
     rules = rulesIn;
     udts = udtsIn;
     initOperatorFilter();
@@ -373,6 +377,9 @@ module.exports = function() {
       if (line.opcode.type === id.TLS) {
         html += '(' + displayTls(mode, line.opcode) + ') ';
       }
+      if (line.opcode.type === id.REP) {
+        html += '(' + displayRep(mode, line.opcode) + ') ';
+      }
       html += '</td>';
       html += '<td>';
       html += displayPhrase(mode, chars, line.phraseIndex, line.phraseLength,
@@ -436,6 +443,35 @@ module.exports = function() {
         html += "&ndash;" + hex;
       } else {
         html = "%d" + op.min.toString(10) + "&ndash;" + op.max.toString(10);
+      }
+    }
+    return html;
+  }
+  var displayRep = function(mode, op) {
+    var html = "";
+    if (op.type === id.REP) {
+      var min, max, hex;
+      if (mode === MODE_HEX) {
+        hex = op.min.toString(16).toUpperCase();
+        if (hex.length % 2 !== 0) {
+          hex = "0" + hex;
+        }
+        html = "x" + hex;
+        if(op.max < Infinity){
+          hex = op.max.toString(16).toUpperCase();
+          if (hex.length % 2 !== 0) {
+            hex = "0" + hex;
+          }
+        }else{
+          hex = "inf";
+        }
+        html += "&ndash;" + hex;
+      } else {
+        if(op.max < Infinity){
+          html = op.min.toString(10) + "&ndash;" + op.max.toString(10);
+        }else{
+          html = op.min.toString(10) + "&ndash;" + "inf";
+        }
       }
     }
     return html;
@@ -522,7 +558,7 @@ module.exports = function() {
   var displayPhrase = function(mode, chars, offset, len, state) {
     var i;
     var html = '';
-    var offMax = chars.length;
+    var offMax = charsLength;
     var lastChar = '<code>' + PHRASE_END + '</code>';
     if (offMax - offset > MAX_PHRASE) {
       offMax = offset + MAX_PHRASE;

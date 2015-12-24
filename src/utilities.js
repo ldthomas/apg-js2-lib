@@ -4,6 +4,14 @@
 "use strict";
 // Formats the returned object from [`parser.parse()`](./parse.html)
 // into an HTML table.
+//return {
+//  success : result.success,
+//  state : result.state,
+//  length : charsLength - charsFirst,
+//  matched : result.phraseLength,
+//  maxMatched : maxMatched - charsFirst,
+//  maxTreeDepth : maxTreeDepth,
+//  nodeHits : nodeHits
 exports.stateToHtml = function(parserState, caption, className) {
   var id = require("./identifiers.js");
   if (typeof (caption !== "string")) {
@@ -40,7 +48,16 @@ exports.stateToHtml = function(parserState, caption, className) {
       + '</td><td>length of the input string</td></tr>\n';
   html += '<tr><td>matched length</td><td>'
       + parserState.matched
-      + '</td><td>maximum number of input string characters matched</td></tr>\n';
+      + '</td><td>number of input string characters matched</td></tr>\n';
+  html += '<tr><td>max matched</td><td>'
+    + parserState.maxMatched
+    + '</td><td>maximum number of input string characters matched</td></tr>\n';
+  html += '<tr><td>max tree depth</td><td>'
+    + parserState.maxTreeDepth
+    + '</td><td>maximum depth of the parse tree reached</td></tr>\n';
+  html += '<tr><td>node hits</td><td>'
+    + parserState.nodeHits
+    + '</td><td>number of parse tree node hits (opcode function calls)</td></tr>\n';
   html += '</table></p>\n';
   return html;
 }
