@@ -96,6 +96,32 @@ module.exports = function() {
     syntaxData = null;
     opcodes = null;
   };
+  var backRefInit = function(){
+    var obj = {};
+    rules.forEach(function(rule){
+      if(rule.isBkr){
+        obj[rule.lower] = null;
+      }
+    });
+    if(udts.length > 0){
+      udt.forEach(function(rule){
+        if(rule.isBkr){
+          obj[rule.lower] = null;
+        }
+      });
+    }
+    return obj;
+  }
+  var savePhrase = function(frame, phraseIndex, phraseLength){
+    if(frame){
+      frame = {phraseIndex: phraseIndex, phraseLength: phraseLength}
+    }else{
+      throw new Error(thisFileName + "attempt to save phrase on null parent frame (parent has no back referenced rules)");
+    }
+    if(!frame[name]){
+      throw new Error(thisFileName + "attempt to save phrase for rule/UDT that is not back referenced: '"+name+"'");
+    }
+  }
   /* called by `parse()` to initialize the AST object, if one has been defined */
   var initializeAst = function() {
     var functionName = thisFileName + "initializeAst(): ";
@@ -361,6 +387,7 @@ module.exports = function() {
       state : id.ACTIVE,
       phraseLength : 0,
       success : false,
+      parentFrame : null,
       evaluateRule : evaluateRule,
       evaluateUdt : evaluateUdt
     };
@@ -436,6 +463,7 @@ module.exports = function() {
       state : id.ACTIVE,
       phraseLength : 0,
       success : false,
+      parentFrame : result.parentFrame,
       evaluateRule : result.evaluateRule,
       evaluateUdt : result.evaluateUdt
     };
@@ -476,6 +504,7 @@ module.exports = function() {
       state : id.ACTIVE,
       phraseLength : 0,
       success : false,
+      parentFrame : result.parentFrame,
       evaluateRule : result.evaluateRule,
       evaluateUdt : result.evaluateUdt
     };
@@ -564,6 +593,12 @@ module.exports = function() {
   var opRNM = function(opIndex, phraseIndex, result) {
     var savedOpcodes, downIndex, op, rule, astLength, astDefined;
     op = opcodes[opIndex];
+    var frame = null;
+    var saveFrame = result.parentFrame;
+    if(rules[op.index].hasBkr){
+      frame = backRefInit();
+    }
+    result.parentFrame = frame;
     /*
      * AST node creation only if an AST object is defined, and an AST node for
      * this rule is defined. Note also that AST node creation is supressed when
@@ -607,6 +642,14 @@ module.exports = function() {
       } else {
         that.ast.up(op.index, rules[op.index].name, phraseIndex, result.phraseLength);
       }
+    }
+    result.parentFrame = saveFrame;
+    if(rules[op.index].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)){
+      /* !!!! DEBUG */
+      if(!result.parentFrame){
+        throw new Error(thisFileName + "attempt to save phrase on null parent frame: '"+op.name+"'");
+      }
+      result.parentFrame[rules[op.index].lower] = {phraseIndex: phraseIndex, phraseLength: result.phraseLength}
     }
   };
   // Validate the callback function's return result.
@@ -666,6 +709,13 @@ module.exports = function() {
       } else {
         that.ast.up(astIndex, udts[op.index].name, phraseIndex, result.phraseLength);
       }
+    }
+    if(udts[op.index - rules.length].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)){
+      /* !!!! DEBUG */
+      if(!result.parentFrame){
+        throw new Error(thisFileName + "attempt to save phrase on null parent frame: '"+op.name+"'");
+      }
+      result.parentFrame[udts[op.index - rules.length].lower] = {phraseIndex: phraseIndex, phraseLength: result.phraseLength}
     }
   };
   // The `AND` syntactic predicate operator<br>
@@ -801,6 +851,58 @@ module.exports = function() {
       }
     }
   };
+  // The `BKR` operator<br>
+  // Matches the last matched phrase of the named rule or UDT against the input string.
+  // For ASCII alphbetical characters the match may be case sensitive or insensitive,
+  // depending on the back reference definition.
+  var opBKR = function(opIndex, phraseIndex, result) {
+    var i, code, len, op, lmIndex, lmcode, lower;
+    op = opcodes[opIndex];
+    result.state = id.NOMATCH;
+    result.phraseLength = 0;
+    if(op.index < rules.length){
+      lower = rules[op.index].lower;
+    }else{
+      lower = udts[op.index - rules.length].lower;
+    }
+    debugger;
+    lmIndex = result.parentFrame[lower].phraseIndex;
+    len = result.parentFrame[lower].phraseLength;
+    if (len === 0) {
+      result.state = id.EMPTY;
+    } else if ((phraseIndex + len) <= charsLength) {
+      if(op.insensitive){
+        /* case-insensitive match */
+        for (i = 0; i < len; i += 1) {
+          code = chars[phraseIndex + i];
+          lmcode = chars[lmIndex + i];
+          if (code >= 65 && code <= 90) {
+            code += 32;
+          }
+          if (lmcode >= 65 && lmcode <= 90) {
+            lmcode += 32;
+          }
+          if (code !== lmcode) {
+            break;
+          }
+          result.phraseLength += 1;
+        }
+      }else{
+        /* case-sensitive match */
+        for (i = 0; i < len; i += 1) {
+          code = chars[phraseIndex + i];
+          lmcode = chars[lmIndex + i];
+          if (code !== lmcode) {
+            break;
+          }
+          result.phraseLength += 1;
+        }
+      }
+      if (result.phraseLength === len) {
+        result.state = id.MATCH;
+      }
+    }
+  };
   // Generalized execution function.<br>
   // Having a single, generalized function, allows a single location
   // for tracing and statistics gathering functions to be called.
@@ -859,6 +961,9 @@ module.exports = function() {
       break;
     case id.TLS:
       opTLS(opIndex, phraseIndex, result);
+      break;
+    case id.BKR:
+      opBKR(opIndex, phraseIndex, result);
       break;
     default:
       ret = false;

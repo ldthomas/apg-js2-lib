@@ -4,14 +4,14 @@
 "use strict";
 // Formats the returned object from [`parser.parse()`](./parse.html)
 // into an HTML table.
-//return {
-//  success : result.success,
-//  state : result.state,
-//  length : charsLength - charsFirst,
-//  matched : result.phraseLength,
-//  maxMatched : maxMatched - charsFirst,
-//  maxTreeDepth : maxTreeDepth,
-//  nodeHits : nodeHits
+// return {
+// success : result.success,
+// state : result.state,
+// length : charsLength - charsFirst,
+// matched : result.phraseLength,
+// maxMatched : maxMatched - charsFirst,
+// maxTreeDepth : maxTreeDepth,
+// nodeHits : nodeHits
 exports.stateToHtml = function(parserState, caption, className) {
   var id = require("./identifiers.js");
   if (typeof (caption !== "string")) {
@@ -39,32 +39,25 @@ exports.stateToHtml = function(parserState, caption, className) {
   html += '<p><table class="' + className + '">\n';
   html += '<caption>' + caption + '</caption>\n';
   html += '<tr><th>state item</th><th>value</th><th>description</th></tr>\n';
-  html += '<tr><td>parser success</td><td>' + success
-      + '</td><td>true if the parse succeeded, false otherwise'
+  html += '<tr><td>parser success</td><td>' + success + '</td><td>true if the parse succeeded, false otherwise'
       + '<br>NOTE: for success, entire string must be matched</th></tr>\n';
-  html += '<tr><td>parser state</td><td>' + state
-      + '</td><td>EMPTY, MATCH or NOMATCH</td></tr>\n';
-  html += '<tr><td>string length</td><td>' + parserState.length
-      + '</td><td>length of the input string</td></tr>\n';
-  html += '<tr><td>matched length</td><td>'
-      + parserState.matched
+  html += '<tr><td>parser state</td><td>' + state + '</td><td>EMPTY, MATCH or NOMATCH</td></tr>\n';
+  html += '<tr><td>string length</td><td>' + parserState.length + '</td><td>length of the input string</td></tr>\n';
+  html += '<tr><td>matched length</td><td>' + parserState.matched
       + '</td><td>number of input string characters matched</td></tr>\n';
-  html += '<tr><td>max matched</td><td>'
-    + parserState.maxMatched
-    + '</td><td>maximum number of input string characters matched</td></tr>\n';
-  html += '<tr><td>max tree depth</td><td>'
-    + parserState.maxTreeDepth
-    + '</td><td>maximum depth of the parse tree reached</td></tr>\n';
-  html += '<tr><td>node hits</td><td>'
-    + parserState.nodeHits
-    + '</td><td>number of parse tree node hits (opcode function calls)</td></tr>\n';
+  html += '<tr><td>max matched</td><td>' + parserState.maxMatched
+      + '</td><td>maximum number of input string characters matched</td></tr>\n';
+  html += '<tr><td>max tree depth</td><td>' + parserState.maxTreeDepth
+      + '</td><td>maximum depth of the parse tree reached</td></tr>\n';
+  html += '<tr><td>node hits</td><td>' + parserState.nodeHits
+      + '</td><td>number of parse tree node hits (opcode function calls)</td></tr>\n';
   html += '</table></p>\n';
   return html;
 }
 // Formats an array of integer character codes to HTML.
 // - *chars* - the array of integers
-//- *beg* - the first character in the array to format
-//- *end* - the last character (included) in the array to format
+// - *beg* - the first character in the array to format
+// - *end* - the last character (included) in the array to format
 exports.charsToHtml = function(chars, beg, end) {
   var NORMAL = 0;
   var CONTROL_BEG = "<code>";
@@ -151,7 +144,7 @@ exports.charsToHtml = function(chars, beg, end) {
           html += CONTROL_END + INVALID_BEG;
           state = INVALID_BEG;
         }
-        /* display character as hexidecimal value*/
+        /* display character as hexidecimal value */
         html += "x" + ch.toString(16);
       }
     }
@@ -165,8 +158,10 @@ exports.charsToHtml = function(chars, beg, end) {
   }
   return html;
 }
-// Used by [`apg`](https://github.com/ldthomas/apg-js2) to format specialized error objects into an HTML table.
-// It's here because it was used by more than one object at one time. I think only `apg` uses it now.
+// Used by [`apg`](https://github.com/ldthomas/apg-js2) to format specialized
+// error objects into an HTML table.
+// It's here because it was used by more than one object at one time. I think
+// only `apg` uses it now.
 exports.errorsToHtml = function(chars, lines, errors, title, className) {
   var html = "";
   var that = this;
@@ -203,8 +198,7 @@ exports.errorsToHtml = function(chars, lines, errors, title, className) {
       relchar = val.char - line.beginChar;
     }
     html += '<tr>';
-    html += '<td>' + val.line + '</td><td>' + relchar + '</td><td>' + text
-        + '</td>';
+    html += '<td>' + val.line + '</td><td>' + relchar + '</td><td>' + text + '</td>';
     html += '</tr>\n';
     html += '<tr>';
     html += '<td colspan="2"></td>' + '<td>&uarr;:&nbsp;' + val.msg + '</td>'
@@ -214,13 +208,13 @@ exports.errorsToHtml = function(chars, lines, errors, title, className) {
   return html;
 }
 // Translates a sub-array of integer character codes into a string.
-// Very useful in callback functions to translate the matched phrases into strings.
+// Very useful in callback functions to translate the matched phrases into
+// strings.
 exports.charsToString = function(chars, phraseIndex, phraseLength) {
   var string = '';
   if (Array.isArray(chars)) {
     var charIndex = (typeof (phraseIndex) === 'number') ? phraseIndex : 0;
-    var charLength = (typeof (phraseLength) === 'number') ? phraseLength
-        : chars.length;
+    var charLength = (typeof (phraseLength) === 'number') ? phraseLength : chars.length;
     if (charLength > chars.length) {
       charLength = chars.length;
     }
@@ -253,41 +247,35 @@ exports.opcodeToString = function(type) {
   case id.ALT:
     ret = 'ALT';
     break;
-
   case id.CAT:
     ret = 'CAT';
     break;
-
   case id.RNM:
     ret = 'RNM';
     break;
-
   case id.UDT:
     ret = 'UDT';
     break;
-
   case id.AND:
     ret = 'AND';
     break;
-
   case id.NOT:
     ret = 'NOT';
     break;
-
   case id.REP:
     ret = 'REP';
     break;
-
   case id.TRG:
     ret = 'TRG';
     break;
-
   case id.TBS:
     ret = 'TBS';
     break;
-
   case id.TLS:
     ret = 'TLS';
+    break;
+  case id.BKR:
+    ret = 'BKR';
     break;
   }
   return ret;
@@ -295,9 +283,11 @@ exports.opcodeToString = function(type) {
 // Generates a complete HTML page, inserting the user's HTML text on the page.
 // - *html* - the page text in HTML format
 // - *filename* - the name of the file to write the page to.
-// Will fail and return an error message if this file cannot be opened or created.
-//- *classname* - defaults to "apg-table". (I'm not sure including this as parameter makes any sense, but here it is for now.)
-//- *title* - the HTML page `<title>` - defaults to filename.
+// Will fail and return an error message if this file cannot be opened or
+// created.
+// - *classname* - defaults to "apg-table". (I'm not sure including this as
+// parameter makes any sense, but here it is for now.)
+// - *title* - the HTML page `<title>` - defaults to filename.
 exports.htmlToPage = function(html, filename, classname, title) {
   var fs = require("fs");
   var thisFileName = "utilities.js: ";
@@ -317,30 +307,15 @@ exports.htmlToPage = function(html, filename, classname, title) {
   header += 'table.'
       + classname
       + '{font-family:monospace;font-size:85%;font-style:normal;font-weight:normal;border:1px solid black;border-collapse:collapse;}\n\.'
-      + classname
-      + ' caption{font-size:125%;font-weight:bold;text-align:left;}\n\.'
-      + classname
-      + ' th,\n\.'
-      + classname
-      + ' td{text-align:right;border:1px solid black;border-collapse:collapse;}\n\.'
-      + classname
-      + ' th:nth-last-child(-n+2){text-align:left;}\n\.'
-      + classname
-      + ' td:nth-last-child(-n+2){text-align:left;}\n\.'
-      + classname
-      + ' b{background-color:#c2e0ff;color:#0000ff;}\n\.'
-      + classname
-      + ' i{background-color:#CCE6CC;color:#00cc00;}\n\.'
-      + classname
-      + ' em{color:#cc0000;font-style:italic;font-weight:bold;}\n\.'
-      + classname
-      + ' strong{font-weight:bold;}\n\.'
-      + classname
-      + ' code{color:blue;font-style:italic;font-weight:bold;font-size:75%;}\n\.'
-      + classname + ' samp{background-color:#b2ffb2;color:#008000;}\n\.'
-      + classname + ' kbd{background-color:#ffe6e6;color:#ff0000;}\n\.'
-      + classname
-      + ' var{background-color:#ffcccc;color:#cc0000;font-weight:bold;}';
+      + classname + ' caption{font-size:125%;font-weight:bold;text-align:left;}\n\.' + classname + ' th,\n\.' + classname
+      + ' td{text-align:right;border:1px solid black;border-collapse:collapse;}\n\.' + classname
+      + ' th:nth-last-child(-n+2){text-align:left;}\n\.' + classname + ' td:nth-last-child(-n+2){text-align:left;}\n\.'
+      + classname + ' b{background-color:#c2e0ff;color:#0000ff;}\n\.' + classname
+      + ' i{background-color:#CCE6CC;color:#00cc00;}\n\.' + classname
+      + ' em{color:#cc0000;font-style:italic;font-weight:bold;}\n\.' + classname + ' strong{font-weight:bold;}\n\.' + classname
+      + ' code{color:blue;font-style:italic;font-weight:bold;font-size:75%;}\n\.' + classname
+      + ' samp{background-color:#b2ffb2;color:#008000;}\n\.' + classname + ' kbd{background-color:#ffe6e6;color:#ff0000;}\n\.'
+      + classname + ' var{background-color:#ffcccc;color:#cc0000;font-weight:bold;}';
   header += '</style>\n';
   header += '</head>\n<body>\n';
   header += '<p>' + new Date() + '</p>\n';

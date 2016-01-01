@@ -123,6 +123,24 @@ module.exports = function() {
       nomatch : 0,
       total : 0
     };
+    stats[id.BKR] = {
+        empty : 0,
+        match : 0,
+        nomatch : 0,
+        total : 0
+      };
+    stats[id.BKA] = {
+        empty : 0,
+        match : 0,
+        nomatch : 0,
+        total : 0
+      };
+    stats[id.BKN] = {
+        empty : 0,
+        match : 0,
+        nomatch : 0,
+        total : 0
+      };
     ruleStats.length = 0;
     for (var i = 0; i < rules.length; i += 1) {
       ruleStats.push({
@@ -214,6 +232,13 @@ module.exports = function() {
     html += '<td>' + stats[id.UDT].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
+    html += '<tr>';
+    html += '<td>BKR</td><td>' + stats[id.BKR].empty + '</td>';
+    html += '<td>' + stats[id.BKR].match + '</td>';
+    html += '<td>' + stats[id.BKR].nomatch + '</td>';
+    html += '<td>' + stats[id.BKR].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
     html += '<td>REP</td><td>' + stats[id.REP].empty + '</td>';
     html += '<td>' + stats[id.REP].match + '</td>';
     html += '<td>' + stats[id.REP].nomatch + '</td>';
@@ -230,6 +255,20 @@ module.exports = function() {
     html += '<td>' + stats[id.NOT].match + '</td>';
     html += '<td>' + stats[id.NOT].nomatch + '</td>';
     html += '<td>' + stats[id.NOT].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
+    html += '<tr>';
+    html += '<td>BKA</td><td>' + stats[id.BKA].empty + '</td>';
+    html += '<td>' + stats[id.BKA].match + '</td>';
+    html += '<td>' + stats[id.BKA].nomatch + '</td>';
+    html += '<td>' + stats[id.BKA].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
+    html += '<tr>';
+    html += '<td>BKN</td><td>' + stats[id.BKN].empty + '</td>';
+    html += '<td>' + stats[id.BKN].match + '</td>';
+    html += '<td>' + stats[id.BKN].nomatch + '</td>';
+    html += '<td>' + stats[id.BKN].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
     html += '<td>TLS</td><td>' + stats[id.TLS].empty + '</td>';

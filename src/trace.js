@@ -84,6 +84,7 @@ module.exports = function() {
       operatorFilter[id.TLS] = set;
       operatorFilter[id.TBS] = set;
       operatorFilter[id.TRG] = set;
+      operatorFilter[id.BKR] = set;
     }
     var all, items = 0;
     for ( var name in that.filter.operators) {
@@ -130,13 +131,15 @@ module.exports = function() {
             operatorFilter[id.TBS] = true;
           } else if (upper === 'TRG') {
             operatorFilter[id.TRG] = true;
+          } else if (upper === 'BKR') {
+            operatorFilter[id.BKR] = true;
           } else {
             throw new Error(
                 thisFileName
                     + "initOpratorFilter: '"
                     + name
                     + "' not a valid operator name."
-                    + " Must be <all>, <none>, alt, cat, rep, and, not, tls, tbs or trg");
+                    + " Must be <all>, <none>, alt, cat, rep, and, not, tls, tbs, bkr or trg");
           }
         }
       }
@@ -364,6 +367,10 @@ module.exports = function() {
       html += that.indent(line.depth) + utils.opcodeToString(line.opcode.type);
       if (line.opcode.type === id.RNM) {
         html += '(' + rules[line.opcode.index].name + ') ';
+      }
+      if (line.opcode.type === id.BKR) {
+        var casetype = line.opcode.insensitive ? "%i" : "%s";
+        html += '(\\' + casetype + rules[line.opcode.index].name + ') ';
       }
       if (line.opcode.type === id.UDT) {
         html += '(' + udts[line.opcode.index].name + ') ';
