@@ -25,7 +25,6 @@ module.exports = function() {
   var treeDepth = 0;
   var maxTreeDepth = 0;
   var nodeHits = 0;
-  var spDepth = 0; /* syntactic predicate depth */
   var ruleCallbacks = null;
   var udtCallbacks = null;
   var rules = null;
@@ -34,6 +33,7 @@ module.exports = function() {
   var maxMatched = 0;
   var limitTreeDepth = Infinity;
   var limitNodeHits = Infinity;
+  var parentFrameMode = true;
   // Evaluates any given rule. This can be called from the syntax callback
   // functions to evaluate any rule in the grammar's rule list. Great caution
   // should be used. Use of this function will alter the language that the
@@ -86,7 +86,6 @@ module.exports = function() {
     treeDepth = 0;
     maxTreeDepth = 0;
     nodeHits = 0;
-    spDepth = 0;
     rules = null;
     udts = null;
     chars = null;
@@ -96,30 +95,44 @@ module.exports = function() {
     syntaxData = null;
     opcodes = null;
   };
-  var backRefInit = function(){
+  var backrefInit = function() {
     var obj = {};
-    rules.forEach(function(rule){
-      if(rule.isBkr){
+    rules.forEach(function(rule) {
+      if (rule.isBkr) {
         obj[rule.lower] = null;
       }
     });
-    if(udts.length > 0){
-      udt.forEach(function(rule){
-        if(rule.isBkr){
+    if (udts.length > 0) {
+      udt.forEach(function(rule) {
+        if (rule.isBkr) {
           obj[rule.lower] = null;
         }
       });
     }
     return obj;
   }
-  var savePhrase = function(frame, phraseIndex, phraseLength){
-    if(frame){
-      frame = {phraseIndex: phraseIndex, phraseLength: phraseLength}
-    }else{
-      throw new Error(thisFileName + "attempt to save phrase on null parent frame (parent has no back referenced rules)");
+  var resultInit = function() {
+    return {
+      state : id.ACTIVE,
+      phraseLength : 0,
+      success : false,
+      backrefFrame : backrefInit(),
+      lookAhead : 0,
+      lookBehind : 0,
+      evaluateRule : evaluateRule,
+      evaluateUdt : evaluateUdt
     }
-    if(!frame[name]){
-      throw new Error(thisFileName + "attempt to save phrase for rule/UDT that is not back referenced: '"+name+"'");
+  }
+  var resultCopy = function(result) {
+    return {
+      state : result.state,
+      phraseLength : result.PhraseLength,
+      success : result.success,
+      backrefFrame : result.backrefFrame,
+      lookAhead : result.lookAhead,
+      lookBehind : result.lookBehind,
+      evaluateRule : result.evaluateRule,
+      evaluateUdt : result.evaluateUdt
     }
   }
   /* called by `parse()` to initialize the AST object, if one has been defined */
@@ -163,10 +176,7 @@ module.exports = function() {
     }
 
   }
-  /*
-   * called by `parse()` to initialize the statistics object, if one has been
-   * defined
-   */
+  /* called by `parse()` to initialize the statistics object, if one has been defined */
   var initializeStats = function() {
     var functionName = thisFileName + "initializeStats(): ";
     while (true) {
@@ -224,10 +234,7 @@ module.exports = function() {
     }
     return start;
   }
-  /*
-   * called by `parse()` to initialize the array of characters codes
-   * representing the input string
-   */
+  /* called by `parse()` to initialize the array of characters codes representing the input string */
   var initializeInputChars = function(input, beg, len) {
     var functionName = thisFileName + "initializeInputChars(): ";
     if (input === undefined) {
@@ -263,10 +270,7 @@ module.exports = function() {
       }
     }
   }
-  /*
-   * called by `parse()` to initialize the user-written, syntax callback
-   * functions, if any
-   */
+  /* called by `parse()` to initialize the user-written, syntax callback functions, if any */
   var initializeCallbacks = function() {
     var functionName = thisFileName + "initializeCallbacks(): ";
     var i;
@@ -338,15 +342,25 @@ module.exports = function() {
       throw new Error("parser: max node hits must be integer > 0: " + depth);
     }
   }
-  this.parse = function(grammar, startRule, inputChars, callbackData) {
-    clear();
-    initializeInputChars(inputChars, 0, -1);
-    return privateParse(grammar, startRule, callbackData);
-  }
-  this.parseSubstring = function(grammar, startRule, inputChars, inputIndex, inputLength, callbackData) {
-    clear();
-    initializeInputChars(inputChars, inputIndex, inputLength);
-    return privateParse(grammar, startRule, callbackData);
+  // Set the back referencing mode.
+  // ```
+  // universalMode - true/false
+  // ```
+  // Universial mode means that the back reference to a rule name, say "A",
+  // is a reference to the last match, regardless of where or which rule the match was made in.
+  // False, or parent frame mode, means that the back reference to "A" is a reference to
+  // the last match on the parent rule's parse tree node level.
+  // e.g.
+  // ```
+  // S = A B \A
+  // B = A "b" \A
+  // A = "x" / "y"
+  //```
+  // In universal mode this would match `xybyy` but not `xybyx`.
+  // That is \A refers to the last match regardless of where it occurs.
+  // In parent frame mode, this would match `xybyx` but not `xybyy`.
+  this.setUniversalMode = function(universalMode){
+    parentFrameMode = (universalMode === false) ? true : false;
   }
   // This is the main function, called to parse an input string.
   // <ul>
@@ -363,6 +377,19 @@ module.exports = function() {
   // This is not used by the parser in any way, merely passed on to the user.
   // May be `null` or omitted.</li>
   // </ul>
+  this.parse = function(grammar, startRule, inputChars, callbackData) {
+    clear();
+    initializeInputChars(inputChars, 0, -1);
+    return privateParse(grammar, startRule, callbackData);
+  }
+  // This form allows parsing of a sub-string of the full input string.
+  // It treats inputChars[inputIndex] as the first character to match and
+  // inputChars[inputIndex + inputLength - 1] as the last.
+  this.parseSubstring = function(grammar, startRule, inputChars, inputIndex, inputLength, callbackData) {
+    clear();
+    initializeInputChars(inputChars, inputIndex, inputLength);
+    return privateParse(grammar, startRule, callbackData);
+  }
   var privateParse = function(grammar, startRule, callbackData) {
     var functionName, result;
     functionName = thisFileName + "parse(): ";
@@ -383,21 +410,13 @@ module.exports = function() {
     // - *evaluateUdt* - a reference to this object's `evaluateUdt()` function.
     // Can be called from a callback function
     // (use with extreme caution!)
-    result = {
-      state : id.ACTIVE,
-      phraseLength : 0,
-      success : false,
-      parentFrame : null,
-      evaluateRule : evaluateRule,
-      evaluateUdt : evaluateUdt
-    };
-    /* clear the parser and initialize all of the components */
     initializeGrammar(grammar);
     startRule = initializeStartRule(startRule);
     initializeCallbacks();
     initializeTrace();
     initializeStats();
     initializeAst();
+    result = resultInit();
     if (!(callbackData === undefined || callbackData === null)) {
       syntaxData = callbackData;
     }
@@ -459,14 +478,7 @@ module.exports = function() {
     if (that.ast) {
       astLength = that.ast.getLength();
     }
-    catResult = {
-      state : id.ACTIVE,
-      phraseLength : 0,
-      success : false,
-      parentFrame : result.parentFrame,
-      evaluateRule : result.evaluateRule,
-      evaluateUdt : result.evaluateUdt
-    };
+    catResult = resultCopy(result);
     success = true;
     catCharIndex = phraseIndex;
     catMatched = 0;
@@ -500,14 +512,7 @@ module.exports = function() {
   var opREP = function(opIndex, phraseIndex, result) {
     var nextResult, nextCharIndex, matchedCount, matchedChars, op, astLength;
     op = opcodes[opIndex];
-    nextResult = {
-      state : id.ACTIVE,
-      phraseLength : 0,
-      success : false,
-      parentFrame : result.parentFrame,
-      evaluateRule : result.evaluateRule,
-      evaluateUdt : result.evaluateUdt
-    };
+    nextResult = resultCopy(result);
     nextCharIndex = phraseIndex;
     matchedCount = 0;
     matchedChars = 0;
@@ -591,27 +596,27 @@ module.exports = function() {
   // create its nodes.
   // See [`ast.js`](./ast.html) for usage.
   var opRNM = function(opIndex, phraseIndex, result) {
-    var savedOpcodes, downIndex, op, rule, astLength, astDefined;
+    var op, rule, callback, astLength, astDefined, downIndex, savedOpcodes;
+    var frame, saveFrame;
     op = opcodes[opIndex];
-    var frame = null;
-    var saveFrame = result.parentFrame;
-    if(rules[op.index].hasBkr){
-      frame = backRefInit();
+    rule = rules[op.index];
+    callback = ruleCallbacks[op.index];
+
+    /* begin backrefs */
+    if(parentFrameMode){
+      saveFrame = result.backrefFrame;
+      result.backrefFrame = backrefInit();
     }
-    result.parentFrame = frame;
-    /*
-     * AST node creation only if an AST object is defined, and an AST node for
-     * this rule is defined. Note also that AST node creation is supressed when
-     * parsing a syntactic predicate since in that case the nodes are guaranteed
-     * to be removed by backtracking
-     */
-    astDefined = that.ast && (spDepth === 0) && that.ast.ruleDefined(op.index);
+    /* begin backrefs */
+
+    /* begin AST - note: ignore AST in lookaround */
+    astDefined = that.ast && that.ast.ruleDefined(op.index) && (result.lookAhead === 0) && (result.lookBehind === 0);
     if (astDefined) {
       astLength = that.ast.getLength();
       downIndex = that.ast.down(op.index, rules[op.index].name);
     }
-    var callback = ruleCallbacks[op.index];
-    var rule = rules[op.index];
+    /* begin AST */
+
     if (callback === null) {
       /* no callback - just execute the rule */
       savedOpcodes = opcodes;
@@ -619,23 +624,23 @@ module.exports = function() {
       opExecute(0, phraseIndex, result);
       opcodes = savedOpcodes;
     } else {
-      /* syntax callback function defined: downward function execution */
+      /* begin callback */
       callback(result, chars, phraseIndex, syntaxData);
       validateRnmCallbackResult(rule, result, true);
+      /* begin callback */
       if (result.state === id.ACTIVE) {
         savedOpcodes = opcodes;
         opcodes = rule.opcodes;
         opExecute(0, phraseIndex, result);
         opcodes = savedOpcodes;
-        /* syntax callback function defined: upward function execution */
+        /* end callback */
         callback(result, chars, phraseIndex, syntaxData);
         validateRnmCallbackResult(rule, result, false);
+        /* end callback */
       }
-      /*
-       * implied else clause: just accept the callback result - RNM acting as
-       * UDT
-       */
+      /* implied else clause: just accept the callback result - RNM acting as UDT */
     }
+    /* end AST */
     if (astDefined) {
       if (result.state === id.NOMATCH) {
         that.ast.setLength(astLength);
@@ -643,14 +648,19 @@ module.exports = function() {
         that.ast.up(op.index, rules[op.index].name, phraseIndex, result.phraseLength);
       }
     }
-    result.parentFrame = saveFrame;
-    if(rules[op.index].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)){
-      /* !!!! DEBUG */
-      if(!result.parentFrame){
-        throw new Error(thisFileName + "attempt to save phrase on null parent frame: '"+op.name+"'");
-      }
-      result.parentFrame[rules[op.index].lower] = {phraseIndex: phraseIndex, phraseLength: result.phraseLength}
+    /* end AST */
+
+    /* end backref */
+    if(parentFrameMode){
+      result.backrefFrame = saveFrame;
     }
+    if (rules[op.index].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)) {
+      result.backrefFrame[rules[op.index].lower] = {
+        phraseIndex : phraseIndex,
+        phraseLength : result.phraseLength
+      }
+    }
+    /* end backref */
   };
   // Validate the callback function's return result.
   // It's the user's responsibility to get it right
@@ -694,15 +704,21 @@ module.exports = function() {
   var opUDT = function(opIndex, phraseIndex, result) {
     var downIndex, astLength, astIndex, op, udt, astDefined;
     op = opcodes[opIndex];
-    astDefined = that.ast && (spDepth === 0) && that.ast.udtDefined(op.index);
+    /* begin AST */
+    astDefined = that.ast && that.ast.udtDefined(op.index) && (result.lookAhead === 0) && (result.lookBehind === 0);
     if (astDefined) {
       astIndex = rules.length + op.index;
       astLength = that.ast.getLength();
       downIndex = that.ast.down(astIndex, udts[op.index].name);
     }
-    /* call the user's callback function */
+    /* begin AST */
+
+    /* UDT */
     udtCallbacks[op.index](result, chars, phraseIndex, syntaxData);
     validateUdtCallbackResult(udts[op.index], result);
+    /* UDT */
+
+    /* end AST */
     if (astDefined) {
       if (result.state === id.NOMATCH) {
         that.ast.setLength(astLength);
@@ -710,12 +726,14 @@ module.exports = function() {
         that.ast.up(astIndex, udts[op.index].name, phraseIndex, result.phraseLength);
       }
     }
-    if(udts[op.index - rules.length].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)){
-      /* !!!! DEBUG */
-      if(!result.parentFrame){
-        throw new Error(thisFileName + "attempt to save phrase on null parent frame: '"+op.name+"'");
+    /* end AST */
+
+    /* back reference */
+    if (udts[op.index - rules.length].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)) {
+      result.backrefFrame[udts[op.index - rules.length].lower] = {
+        phraseIndex : phraseIndex,
+        phraseLength : result.phraseLength
       }
-      result.parentFrame[udts[op.index - rules.length].lower] = {phraseIndex: phraseIndex, phraseLength: result.phraseLength}
     }
   };
   // The `AND` syntactic predicate operator<br>
@@ -725,14 +743,10 @@ module.exports = function() {
   var opAND = function(opIndex, phraseIndex, result) {
     var op, prdResult;
     op = opcodes[opIndex];
-    prdResult = {
-      state : id.ACTIVE,
-      phraseLength : 0,
-      success : false
-    };
-    spDepth += 1;
+    prdResult = resultCopy(result);
+    prdResult.lookAhead += 1;
     opExecute(opIndex + 1, phraseIndex, prdResult);
-    spDepth -= 1;
+    prdResult.lookAhead -= 1;
     switch (prdResult.state) {
     case id.EMPTY:
       result.state = id.EMPTY;
@@ -758,14 +772,10 @@ module.exports = function() {
   var opNOT = function(opIndex, phraseIndex, result) {
     var op, prdResult;
     op = opcodes[opIndex];
-    prdResult = {
-      state : id.ACTIVE,
-      phraseLength : 0,
-      success : false
-    };
-    spDepth += 1;
+    prdResult = resultCopy(result);
+    prdResult.lookAhead += 1;
     opExecute(opIndex + 1, phraseIndex, prdResult);
-    spDepth -= 1;
+    prdResult.lookAhead -= 1;
     result.phraseLength = prdResult.phraseLength;
     switch (prdResult.state) {
     case id.EMPTY:
@@ -860,18 +870,20 @@ module.exports = function() {
     op = opcodes[opIndex];
     result.state = id.NOMATCH;
     result.phraseLength = 0;
-    if(op.index < rules.length){
+    if (op.index < rules.length) {
       lower = rules[op.index].lower;
-    }else{
+    } else {
       lower = udts[op.index - rules.length].lower;
     }
-    debugger;
-    lmIndex = result.parentFrame[lower].phraseIndex;
-    len = result.parentFrame[lower].phraseLength;
+    if(result.backrefFrame[lower] === null){
+      return;
+    }
+    lmIndex = result.backrefFrame[lower].phraseIndex;
+    len = result.backrefFrame[lower].phraseLength;
     if (len === 0) {
       result.state = id.EMPTY;
     } else if ((phraseIndex + len) <= charsLength) {
-      if(op.insensitive){
+      if (op.insensitive) {
         /* case-insensitive match */
         for (i = 0; i < len; i += 1) {
           code = chars[phraseIndex + i];
@@ -887,7 +899,7 @@ module.exports = function() {
           }
           result.phraseLength += 1;
         }
-      }else{
+      } else {
         /* case-sensitive match */
         for (i = 0; i < len; i += 1) {
           code = chars[phraseIndex + i];
