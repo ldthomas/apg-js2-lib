@@ -112,16 +112,34 @@ module.exports = function() {
     }
     return obj;
   }
-  var sysDataInit = function() {
-    return {
-      state : id.ACTIVE,
-      phraseLength : 0,
-      matchedLength : 0,
-      lookBehind : false,
-      backrefFrame : backrefInit(),
-      success : false,
-      evaluateRule : evaluateRule,
-      evaluateUdt : evaluateUdt
+  var systemData = function() {
+    var _this = this;
+    this.state = id.ACTIVE;
+    this.phraseLength = 0;
+    this.matchedLength = 0;
+    this.lookBehind = false;
+    this.backrefFrame = backrefInit();
+    this.success = false;
+    this.evaluateRule = evaluateRule;
+    this.evaluateUdt = evaluateUdt;
+    this.refresh = function(){
+      _this.state = id.ACTIVE;
+      _this.phraseLength = 0;
+      _this.matchedLength = 0;
+    }
+    this.copy = function(){
+      return {
+        state : _this.state,
+        phraseLength : _this.phraseLength,
+        matchedLength : _this.matchedLength,
+        lookBehind : _this.lookBehind,
+        backrefFrame : _this.backrefFrame,
+        success : _this.success,
+        evaluateRule : _this.evaluateRule,
+        evaluateUdt : _this.evaluateUdt,
+        refresh : _this.refresh,
+        copy : _this.copy
+      }
     }
   }
   var sysDataCopy = function(sysData) {
@@ -135,6 +153,11 @@ module.exports = function() {
       evaluateRule : sysData.evaluateRule,
       evaluateUdt : sysData.evaluateUdt
     }
+  }
+  var sysDataRefresh = function(sysData) {
+    sysData.state = id.ACTIVE;
+    sysData.phraseLength = 0;
+    sysData.matchedLength = 0;
   }
   var lookAroundValue = function() {
     if (lookAround.length > 0) {
@@ -438,7 +461,7 @@ module.exports = function() {
     initializeTrace();
     initializeStats();
     initializeAst();
-    sysData = sysDataInit();
+    sysData = new systemData();
     if (!(callbackData === undefined || callbackData === null)) {
       syntaxData = callbackData;
     }
@@ -495,22 +518,23 @@ module.exports = function() {
   // concatenating the matched phrases.
   // Fails if *any* child nodes fail.
   var opCAT = function(opIndex, phraseIndex, sysData) {
-    var op, success, astLength, catResult, catCharIndex, catPhraseLength, catMatched, childOpIndex;
+    var op, success, astLength, catCharIndex, catPhrase, catMatched;
     op = opcodes[opIndex];
     if (that.ast) {
       astLength = that.ast.getLength();
     }
-    catResult = sysDataCopy(sysData);
     success = true;
     catCharIndex = phraseIndex;
     catMatched = 0;
+    catPhrase = 0;
     for (var i = 0; i < op.children.length; i += 1) {
-      opExecute(op.children[i], catCharIndex, catResult);
-      catCharIndex += catResult.phraseLength;
-      catMatched += catResult.phraseLength;
-      if (catResult.state === id.NOMATCH) {
+      opExecute(op.children[i], catCharIndex, sysData);
+      catCharIndex += sysData.phraseLength;
+      catMatched += sysData.phraseLength;
+      catPhrase += sysData.phraseLength;
+      if (sysData.state === id.NOMATCH) {
         success = false;
-        catMatched += catResult.matchedLength;
+        catMatched += sysData.matchedLength;
         break;
       }
     }
@@ -532,83 +556,81 @@ module.exports = function() {
   // The number of repetitions executed and its final sysData depends
   // on its min & max repetition values.
   var opREP = function(opIndex, phraseIndex, sysData) {
-    var nextResult, nextCharIndex, matchedCount, matchedChars, op, astLength;
+    var op, astLength, repCharIndex, repPhrase, repMatched, repCount;
     op = opcodes[opIndex];
-    nextResult = sysDataCopy(sysData);
-    nextCharIndex = phraseIndex;
-    matchedCount = 0;
-    matchedChars = 0;
+    repCharIndex = phraseIndex;
+    repMatched = 0;
+    repPhrase = 0;
+    repCount = 0;
     if (that.ast) {
       astLength = that.ast.getLength();
     }
-    sysData.matchedLength = 0;
     while (true) {
-      if (nextCharIndex >= chars.length) {
+      if (repCharIndex >= chars.length) {
         /* exit on end of input string */
         break;
       }
-      opExecute(opIndex + 1, nextCharIndex, nextResult);
-      if (nextResult.state === id.NOMATCH) {
+      opExecute(opIndex + 1, repCharIndex, sysData);
+      if (sysData.state === id.NOMATCH) {
         /* always end if the child node fails */
-        sysData.matchedLength = nextResult.matchedLength;
+        repMatched += sysData.matchedLength;
         break;
       }
-      if (nextResult.state === id.EMPTY) {
+      if (sysData.state === id.EMPTY) {
         /* REP always succeeds when the child node returns an empty phrase */
         /* this may not seem obvious, but that's the way it works out */
         break;
       }
-      matchedCount += 1;
-      matchedChars += nextResult.phraseLength;
-      nextCharIndex += nextResult.phraseLength;
-      if (matchedCount === op.max) {
+      repCount += 1;
+      repPhrase += sysData.phraseLength;
+      repMatched += sysData.phraseLength;
+      repCharIndex += sysData.phraseLength;
+      if (repCount === op.max) {
         /* end on maxed out reps */
         break;
       }
     }
     /* evaluate the match count according to the min, max values */
-    sysData.matchedLength += matchedChars;
-    if (nextResult.state === id.EMPTY) {
-      sysData.state = (matchedChars === 0) ? id.EMPTY : id.MATCH;
-      sysData.phraseLength = matchedChars;
-    } else if (matchedCount >= op.min) {
-      sysData.state = (matchedChars === 0) ? id.EMPTY : id.MATCH;
-      sysData.phraseLength = matchedChars;
+    sysData.matchedLength = repMatched;
+    if (sysData.state === id.EMPTY) {
+      sysData.state = (repPhrase === 0) ? id.EMPTY : id.MATCH;
+      sysData.phraseLength = repPhrase;
+    } else if (repCount >= op.min) {
+      sysData.state = (repPhrase === 0) ? id.EMPTY : id.MATCH;
+      sysData.phraseLength = repPhrase;
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
-    }
-    if (that.ast && sysData.state === id.NOMATCH) {
-      that.ast.setLength(astLength);
+      if (that.ast) {
+        that.ast.setLength(astLength);
+      }
     }
   };
   // Validate the callback function's return sysData.
   // It's the user's responsibility to get it right
   // but it is `RNM`'s responsibility to fail if the user doesn't.
   var validateRnmCallbackResult = function(rule, sysData, charsLeft, down) {
-//    if (sysData.matchedLength > charsLeft) {
-//      var str = thisFileName + "opRNM(" + rule.name + "): "
-//      str += "matchedLength too long: " + sysData.matchedLength;
-//      str += ": charsLeft: " + charsLeft;
-//      throw new Error(str);
-//    }
+    if (sysData.matchedLength > charsLeft) {
+      var str = thisFileName + "opRNM(" + rule.name + "): callback function error: "
+      str += "sysData.matchedLength: " + sysData.matchedLength;
+      str += " must be <= " + charsLeft;
+      throw new Error(str);
+    }
     if (sysData.phraseLength > charsLeft) {
-      var str = thisFileName + "opRNM(" + rule.name + "): "
-      str += "phraseLength too long: " + sysData.phraseLength;
+      var str = thisFileName + "opRNM(" + rule.name + "): callback function error: "
+      str += "sysData.phraseLength: " + sysData.phraseLength;
+      str += " must be <= " + charsLeft;
       throw new Error(str);
     }
     switch (sysData.state) {
     case id.ACTIVE:
       if (down === true) {
-        sysData.phraseLength = 0;
-        sysData.matchedLength = 0;
       } else {
         throw new Error(thisFileName + "opRNM(" + rule.name + "): callback function return error. ACTIVE state not allowed.");
       }
       break;
     case id.EMPTY:
       sysData.phraseLength = 0;
-      sysData.matchedLength = 0;
       break;
     case id.MATCH:
       sysData.matchedLength = sysData.phraseLength;
@@ -617,6 +639,7 @@ module.exports = function() {
       }
       break;
     case id.NOMATCH:
+      sysData.phraseLength = 0;
       break;
     default:
       throw new Error(thisFileName + "opRNM(" + rule.name + "): callback function return error. Unrecognized return state: "
@@ -713,14 +736,16 @@ module.exports = function() {
   // It's the user's responsibility to get it right
   // but it is `UDT`'s responsibility to fail if the user doesn't.
   var validateUdtCallbackResult = function(udt, sysData, charsLeft) {
-//    if (sysData.matchedLength > charsLeft) {
-//      var str = thisFileName + "opUDT(" + udt.name + "): "
-//      str += "matchedLength too long: " + sysData.matchedLength;
-//      throw new Error(str);
-//    }
+    if (sysData.matchedLength > charsLeft) {
+      var str = thisFileName + "opUDT(" + udt.name + "): callback function error: "
+      str += "sysData.matchedLength: " + sysData.matchedLength;
+      str += " must be <= " + charsLeft;
+      throw new Error(str);
+    }
     if (sysData.phraseLength > charsLeft) {
-      var str = thisFileName + "opUDT(" + udt.name + "): "
-      str += "phraseLength too long: " + sysData.phraseLength;
+      var str = thisFileName + "opUDT(" + udt.name + "): callback function error: "
+      str += "sysData.phraseLength: " + sysData.phraseLength;
+      str += " must be <= " + charsLeft;
       throw new Error(str);
     }
     switch (sysData.state) {
@@ -745,6 +770,7 @@ module.exports = function() {
       sysData.matchedLength = sysData.phraseLength;
       break;
     case id.NOMATCH:
+      sysData.phraseLength = 0;
       break;
     default:
       throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. Unrecognized return state: "
@@ -866,8 +892,6 @@ module.exports = function() {
   var opTRG = function(opIndex, phraseIndex, sysData) {
     var op = opcodes[opIndex];
     sysData.state = id.NOMATCH;
-    sysData.phraseLength = 0;
-    sysData.matchedLength = 0;
     if (phraseIndex < chars.length) {
       if (op.min <= chars[phraseIndex] && chars[phraseIndex] <= op.max) {
         sysData.state = id.MATCH;
@@ -887,11 +911,8 @@ module.exports = function() {
   var opTBS = function(opIndex, phraseIndex, sysData) {
     var i, op, len;
     op = opcodes[opIndex];
-    /* NOMATCH default */
-    sysData.state = id.NOMATCH;
-    sysData.phraseLength = 0;
-    sysData.matchedLength = 0;
     len = op.string.length;
+    sysData.state = id.NOMATCH;
     if ((phraseIndex + len) <= chars.length) {
       for (i = 0; i < len; i += 1) {
         if (chars[phraseIndex + i] !== op.string[i]) {
@@ -903,6 +924,7 @@ module.exports = function() {
       /* MATCH */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
+      sysData.matchedLength = len;
     } /* else NOMATCH */
   };
   // The `TLS` operator<br>
@@ -914,10 +936,7 @@ module.exports = function() {
   var opTLS = function(opIndex, phraseIndex, sysData) {
     var i, code, len, op;
     op = opcodes[opIndex];
-    /* NOMATCH default */
     sysData.state = id.NOMATCH;
-    sysData.phraseLength = 0;
-    sysData.matchedLength = 0;
     len = op.string.length;
     if (len === 0) {
       /* EMPTY match allowed for TLS */
@@ -939,6 +958,7 @@ module.exports = function() {
       /* MATCH found */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
+      sysData.matchedLength = len;
     } /* else NOMATCH */
   };
   // The `BKR` operator<br>
@@ -948,10 +968,7 @@ module.exports = function() {
   var opBKR = function(opIndex, phraseIndex, sysData) {
     var i, code, len, op, lmIndex, lmcode, lower;
     op = opcodes[opIndex];
-    /* NOMATCH default */
     sysData.state = id.NOMATCH;
-    sysData.phraseLength = 0;
-    sysData.matchedLength = 0;
     if (op.index < rules.length) {
       lower = rules[op.index].lower;
     } else {
@@ -1276,9 +1293,7 @@ module.exports = function() {
         throw new Error("parser: maximum parse tree depth exceeded: " + limitTreeDepth);
       }
     }
-    sysData.state = id.ACTIVE;
-    sysData.phraseLength = 0;
-    sysData.success = false;
+    sysData.refresh();
     if (that.trace !== null) {
       /* collect the trace record for down the parse tree */
       that.trace.down(op, sysData.state, phraseIndex, sysData.phraseLength, sysData.matchedLength, lookAroundValue());
