@@ -277,6 +277,12 @@ exports.opcodeToString = function(type) {
   case id.BKR:
     ret = 'BKR';
     break;
+  case id.BKA:
+    ret = 'BKA';
+    break;
+  case id.BKN:
+    ret = 'BKN';
+    break;
   }
   return ret;
 };

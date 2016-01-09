@@ -13,6 +13,7 @@ module.exports = function() {
   var thisFileName = "parser.js: "
   var that = this;
   var id = require("./identifiers.js");
+  var utils = require("./utilities.js");
   this.ast = null;
   this.stats = null;
   this.trace = null;
@@ -20,8 +21,7 @@ module.exports = function() {
   var startRule = 0;
   var opcodes = null;
   var chars = null;
-  var charsFirst = 0;
-  var charsLength = 0;
+  var lookAround = [];
   var treeDepth = 0;
   var maxTreeDepth = 0;
   var nodeHits = 0;
@@ -44,7 +44,7 @@ module.exports = function() {
     if (ruleIndex >= rules.length) {
       throw new Error(functionsName + "rule index: " + ruleIndex + " out of range");
     }
-    if ((phraseIndex >= charsLength)) {
+    if ((phraseIndex >= chars.length)) {
       throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
@@ -65,7 +65,7 @@ module.exports = function() {
     if (udtIndex >= udts.length) {
       throw new Error(functionsName + "udt index: " + udtIndex + " out of range");
     }
-    if ((phraseIndex >= charsLength)) {
+    if ((phraseIndex >= chars.length)) {
       throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
@@ -86,10 +86,11 @@ module.exports = function() {
     treeDepth = 0;
     maxTreeDepth = 0;
     nodeHits = 0;
+    maxMatched = 0;
+    lookAround.length = 0;
     rules = null;
     udts = null;
     chars = null;
-    maxMatched = 0;
     ruleCallbacks = null;
     udtCallbacks = null;
     syntaxData = null;
@@ -103,9 +104,9 @@ module.exports = function() {
       }
     });
     if (udts.length > 0) {
-      udt.forEach(function(rule) {
-        if (rule.isBkr) {
-          obj[rule.lower] = null;
+      udt.forEach(function(udt) {
+        if (udt.isBkr) {
+          obj[udt.lower] = null;
         }
       });
     }
@@ -115,10 +116,10 @@ module.exports = function() {
     return {
       state : id.ACTIVE,
       phraseLength : 0,
-      success : false,
+      matchedLength : 0,
+      lookBehind : false,
       backrefFrame : backrefInit(),
-      lookAhead : 0,
-      lookBehind : 0,
+      success : false,
       evaluateRule : evaluateRule,
       evaluateUdt : evaluateUdt
     }
@@ -126,14 +127,32 @@ module.exports = function() {
   var resultCopy = function(result) {
     return {
       state : result.state,
-      phraseLength : result.PhraseLength,
-      success : result.success,
-      backrefFrame : result.backrefFrame,
-      lookAhead : result.lookAhead,
+      phraseLength : result.phraseLength,
+      matchedLength : result.matchedLength,
       lookBehind : result.lookBehind,
+      backrefFrame : result.backrefFrame,
+      success : result.success,
       evaluateRule : result.evaluateRule,
       evaluateUdt : result.evaluateUdt
     }
+  }
+  var lookAroundValue = function() {
+    if (lookAround.length > 0) {
+      var len = lookAround.length - 1;
+      return lookAround[len];
+    }
+    return -1;
+  }
+  var inLookAround = function() {
+    return (lookAround.length > 0);
+  }
+  var inLookBehind = function() {
+    var ret = false;
+    if (lookAround.length > 0) {
+      var len = lookAround.length - 1;
+      ret = (lookAround[len] === id.BKA) || (lookAround[len] === id.BKN);
+    }
+    return ret;
   }
   /* called by `parse()` to initialize the AST object, if one has been defined */
   var initializeAst = function() {
@@ -152,7 +171,7 @@ module.exports = function() {
       break;
     }
     if (that.ast !== null) {
-      that.ast.init(rules, udts, chars, charsFirst, charsLength);
+      that.ast.init(rules, udts, chars);
     }
   }
   /* called by `parse()` to initialize the trace object, if one has been defined */
@@ -172,7 +191,7 @@ module.exports = function() {
       break;
     }
     if (that.trace !== null) {
-      that.trace.init(rules, udts, chars, charsFirst, charsLength);
+      that.trace.init(rules, udts, chars);
     }
 
   }
@@ -237,13 +256,16 @@ module.exports = function() {
   /* called by `parse()` to initialize the array of characters codes representing the input string */
   var initializeInputChars = function(input, beg, len) {
     var functionName = thisFileName + "initializeInputChars(): ";
+    /* varify and normalize input */
     if (input === undefined) {
       throw new Error(functionName + "input string is undefined");
     }
     if (input === null) {
       throw new Error(functionName + "input string is null");
     }
-    if (!Array.isArray(input)) {
+    if (typeof (input) === "string") {
+      input = utils.stringToChars(input);
+    } else if (!Array.isArray(input)) {
       throw new Error(functionName + "input string is not an array");
     }
     if (input.length > 0) {
@@ -251,24 +273,24 @@ module.exports = function() {
         throw new Error(functionName + "input string not an array of integers");
       }
     }
-    chars = input;
-    if (typeof (beg) === "number") {
-      beg = Math.floor(beg);
-      if (beg < 0 || beg > chars.length) {
-        throw Error(functionName + "beginning input character out of range: " + beg);
-      }
-      charsFirst = beg;
+    /* verify and normalize beginning index */
+    if (typeof (beg) !== "number") {
+      throw new Error(functionName + "input beginning index not an integer");
     }
-    if (typeof (len) === "number") {
+    beg = Math.floor(beg);
+    if (beg < 0 || beg >= input.length) {
+      throw new Error(functionName + "input beginning index out of range: " + beg);
+    }
+    /* verify and normalize input length */
+    if (typeof (len) !== "number") {
+      len = input.length - beg;
+    } else {
       len = Math.floor(len);
-      if (len < 0) {
-        charsLength = chars.length;
-      } else if ((charsFirst + len) > chars.length) {
-        throw Error(functionName + "last input character out of range: " + (charsFirst + len));
-      } else {
-        charsLength = charsFirst + len;
+      if (len < 0 || len > (input.length - beg)) {
+        throw new Error(functionName + "input length out of range: " + len);
       }
     }
+    chars = input.slice(beg, beg + len);
   }
   /* called by `parse()` to initialize the user-written, syntax callback functions, if any */
   var initializeCallbacks = function() {
@@ -355,11 +377,11 @@ module.exports = function() {
   // S = A B \A
   // B = A "b" \A
   // A = "x" / "y"
-  //```
+  // ```
   // In universal mode this would match `xybyy` but not `xybyx`.
   // That is \A refers to the last match regardless of where it occurs.
   // In parent frame mode, this would match `xybyx` but not `xybyy`.
-  this.setUniversalMode = function(universalMode){
+  this.setUniversalMode = function(universalMode) {
     parentFrameMode = (universalMode === false) ? true : false;
   }
   // This is the main function, called to parse an input string.
@@ -379,7 +401,7 @@ module.exports = function() {
   // </ul>
   this.parse = function(grammar, startRule, inputChars, callbackData) {
     clear();
-    initializeInputChars(inputChars, 0, -1);
+    initializeInputChars(inputChars, 0, inputChars.length);
     return privateParse(grammar, startRule, callbackData);
   }
   // This form allows parsing of a sub-string of the full input string.
@@ -426,7 +448,7 @@ module.exports = function() {
       index : startRule
     } ];
     /* execute the start rule */
-    opExecute(0, charsFirst, result);
+    opExecute(0, 0, result);
     opcodes = null;
     /* test and return the result */
     switch (result.state) {
@@ -438,7 +460,7 @@ module.exports = function() {
       break;
     case id.EMPTY:
     case id.MATCH:
-      if (result.phraseLength === (charsLength - charsFirst)) {
+      if (result.phraseLength === chars.length) {
         result.success = true;
       } else {
         result.success = false;
@@ -448,9 +470,9 @@ module.exports = function() {
     return {
       success : result.success,
       state : result.state,
-      length : charsLength - charsFirst,
+      length : chars.length,
       matched : result.phraseLength,
-      maxMatched : maxMatched - charsFirst,
+      maxMatched : maxMatched,
       maxTreeDepth : maxTreeDepth,
       nodeHits : nodeHits
     };
@@ -473,7 +495,7 @@ module.exports = function() {
   // concatenating the matched phrases.
   // Fails if *any* child nodes fail.
   var opCAT = function(opIndex, phraseIndex, result) {
-    var op, success, astLength, catResult, catCharIndex, catMatched, childOpIndex, matchedChildren;
+    var op, success, astLength, catResult, catCharIndex, catPhraseLength, catMatched, childOpIndex;
     op = opcodes[opIndex];
     if (that.ast) {
       astLength = that.ast.getLength();
@@ -482,26 +504,26 @@ module.exports = function() {
     success = true;
     catCharIndex = phraseIndex;
     catMatched = 0;
-    matchedChildren = 0;
     for (var i = 0; i < op.children.length; i += 1) {
       opExecute(op.children[i], catCharIndex, catResult);
       catCharIndex += catResult.phraseLength;
       catMatched += catResult.phraseLength;
       if (catResult.state === id.NOMATCH) {
         success = false;
+        catMatched += catResult.matchedLength;
         break;
       }
-      matchedChildren += 1;
     }
+    result.matchedLength = catMatched;
     if (success) {
       result.state = catMatched === 0 ? id.EMPTY : id.MATCH;
       result.phraseLength = catMatched;
     } else {
       result.state = id.NOMATCH;
       result.phraseLength = 0;
-    }
-    if (that.ast && result.state === id.NOMATCH) {
-      that.ast.setLength(astLength);
+      if (that.ast) {
+        that.ast.setLength(astLength);
+      }
     }
   };
   // The `REP` operator<br>
@@ -519,14 +541,16 @@ module.exports = function() {
     if (that.ast) {
       astLength = that.ast.getLength();
     }
+    result.matchedLength = 0;
     while (true) {
-      if (nextCharIndex > charsLength) {
+      if (nextCharIndex >= chars.length) {
         /* exit on end of input string */
         break;
       }
       opExecute(opIndex + 1, nextCharIndex, nextResult);
       if (nextResult.state === id.NOMATCH) {
         /* always end if the child node fails */
+        result.matchedLength = nextResult.matchedLength;
         break;
       }
       if (nextResult.state === id.EMPTY) {
@@ -543,6 +567,7 @@ module.exports = function() {
       }
     }
     /* evaluate the match count according to the min, max values */
+    result.matchedLength += matchedChars;
     if (nextResult.state === id.EMPTY) {
       result.state = (matchedChars === 0) ? id.EMPTY : id.MATCH;
       result.phraseLength = matchedChars;
@@ -560,19 +585,33 @@ module.exports = function() {
   // Validate the callback function's return result.
   // It's the user's responsibility to get it right
   // but it is `RNM`'s responsibility to fail if the user doesn't.
-  var validateRnmCallbackResult = function(rule, result, down) {
+  var validateRnmCallbackResult = function(rule, result, charsLeft, down) {
+//    if (result.matchedLength > charsLeft) {
+//      var str = thisFileName + "opRNM(" + rule.name + "): "
+//      str += "matchedLength too long: " + result.matchedLength;
+//      str += ": charsLeft: " + charsLeft;
+//      throw new Error(str);
+//    }
+    if (result.phraseLength > charsLeft) {
+      var str = thisFileName + "opRNM(" + rule.name + "): "
+      str += "phraseLength too long: " + result.phraseLength;
+      throw new Error(str);
+    }
     switch (result.state) {
     case id.ACTIVE:
       if (down === true) {
         result.phraseLength = 0;
+        result.matchedLength = 0;
       } else {
         throw new Error(thisFileName + "opRNM(" + rule.name + "): callback function return error. ACTIVE state not allowed.");
       }
       break;
     case id.EMPTY:
       result.phraseLength = 0;
+      result.matchedLength = 0;
       break;
     case id.MATCH:
+      result.matchedLength = result.phraseLength;
       if (result.phraseLength === 0) {
         result.state = id.EMPTY;
       }
@@ -601,21 +640,23 @@ module.exports = function() {
     op = opcodes[opIndex];
     rule = rules[op.index];
     callback = ruleCallbacks[op.index];
+    var notLookAround = !inLookAround();
+    if (notLookAround) {
+      /* begin backrefs */
+      if (parentFrameMode) {
+        saveFrame = result.backrefFrame;
+        result.backrefFrame = backrefInit();
+      }
+      /* begin backrefs */
 
-    /* begin backrefs */
-    if(parentFrameMode){
-      saveFrame = result.backrefFrame;
-      result.backrefFrame = backrefInit();
+      /* begin AST - note: ignore AST in lookaround */
+      astDefined = that.ast && that.ast.ruleDefined(op.index);
+      if (astDefined) {
+        astLength = that.ast.getLength();
+        downIndex = that.ast.down(op.index, rules[op.index].name);
+      }
+      /* begin AST */
     }
-    /* begin backrefs */
-
-    /* begin AST - note: ignore AST in lookaround */
-    astDefined = that.ast && that.ast.ruleDefined(op.index) && (result.lookAhead === 0) && (result.lookBehind === 0);
-    if (astDefined) {
-      astLength = that.ast.getLength();
-      downIndex = that.ast.down(op.index, rules[op.index].name);
-    }
-    /* begin AST */
 
     if (callback === null) {
       /* no callback - just execute the rule */
@@ -625,8 +666,10 @@ module.exports = function() {
       opcodes = savedOpcodes;
     } else {
       /* begin callback */
+      var charsLeft = chars.length - phraseIndex;
+      result.lookBehind = inLookBehind();
       callback(result, chars, phraseIndex, syntaxData);
-      validateRnmCallbackResult(rule, result, true);
+      validateRnmCallbackResult(rule, result, charsLeft, true);
       /* begin callback */
       if (result.state === id.ACTIVE) {
         savedOpcodes = opcodes;
@@ -635,37 +678,51 @@ module.exports = function() {
         opcodes = savedOpcodes;
         /* end callback */
         callback(result, chars, phraseIndex, syntaxData);
-        validateRnmCallbackResult(rule, result, false);
+        validateRnmCallbackResult(rule, result, charsLeft, false);
         /* end callback */
       }
       /* implied else clause: just accept the callback result - RNM acting as UDT */
+      result.lookBehind = false;
     }
-    /* end AST */
-    if (astDefined) {
-      if (result.state === id.NOMATCH) {
-        that.ast.setLength(astLength);
-      } else {
-        that.ast.up(op.index, rules[op.index].name, phraseIndex, result.phraseLength);
-      }
-    }
-    /* end AST */
 
-    /* end backref */
-    if(parentFrameMode){
-      result.backrefFrame = saveFrame;
-    }
-    if (rules[op.index].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)) {
-      result.backrefFrame[rules[op.index].lower] = {
-        phraseIndex : phraseIndex,
-        phraseLength : result.phraseLength
+    if (notLookAround) {
+      /* end AST */
+      if (astDefined) {
+        if (result.state === id.NOMATCH) {
+          that.ast.setLength(astLength);
+        } else {
+          that.ast.up(op.index, rules[op.index].name, phraseIndex, result.phraseLength);
+        }
       }
+      /* end AST */
+
+      /* end backref */
+      if (parentFrameMode) {
+        result.backrefFrame = saveFrame;
+      }
+      if (rules[op.index].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)) {
+        result.backrefFrame[rules[op.index].lower] = {
+          phraseIndex : phraseIndex,
+          phraseLength : result.phraseLength
+        }
+      }
+      /* end backref */
     }
-    /* end backref */
   };
   // Validate the callback function's return result.
   // It's the user's responsibility to get it right
   // but it is `UDT`'s responsibility to fail if the user doesn't.
-  var validateUdtCallbackResult = function(udt, result) {
+  var validateUdtCallbackResult = function(udt, result, charsLeft) {
+//    if (result.matchedLength > charsLeft) {
+//      var str = thisFileName + "opUDT(" + udt.name + "): "
+//      str += "matchedLength too long: " + result.matchedLength;
+//      throw new Error(str);
+//    }
+    if (result.phraseLength > charsLeft) {
+      var str = thisFileName + "opUDT(" + udt.name + "): "
+      str += "phraseLength too long: " + result.phraseLength;
+      throw new Error(str);
+    }
     switch (result.state) {
     case id.ACTIVE:
       throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. ACTIVE state not allowed.");
@@ -685,6 +742,7 @@ module.exports = function() {
           result.state = id.EMPTY;
         }
       }
+      result.matchedLength = result.phraseLength;
       break;
     case id.NOMATCH:
       break;
@@ -704,35 +762,44 @@ module.exports = function() {
   var opUDT = function(opIndex, phraseIndex, result) {
     var downIndex, astLength, astIndex, op, udt, astDefined;
     op = opcodes[opIndex];
-    /* begin AST */
-    astDefined = that.ast && that.ast.udtDefined(op.index) && (result.lookAhead === 0) && (result.lookBehind === 0);
-    if (astDefined) {
-      astIndex = rules.length + op.index;
-      astLength = that.ast.getLength();
-      downIndex = that.ast.down(astIndex, udts[op.index].name);
-    }
-    /* begin AST */
-
-    /* UDT */
-    udtCallbacks[op.index](result, chars, phraseIndex, syntaxData);
-    validateUdtCallbackResult(udts[op.index], result);
-    /* UDT */
-
-    /* end AST */
-    if (astDefined) {
-      if (result.state === id.NOMATCH) {
-        that.ast.setLength(astLength);
-      } else {
-        that.ast.up(astIndex, udts[op.index].name, phraseIndex, result.phraseLength);
+    var notLookAround = !inLookAround();
+    if (notLookAround) {
+      /* begin AST */
+      astDefined = that.ast && that.ast.udtDefined(op.index);
+      if (astDefined) {
+        astIndex = rules.length + op.index;
+        astLength = that.ast.getLength();
+        downIndex = that.ast.down(astIndex, udts[op.index].name);
       }
+      /* begin AST */
     }
-    /* end AST */
 
-    /* back reference */
-    if (udts[op.index - rules.length].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)) {
-      result.backrefFrame[udts[op.index - rules.length].lower] = {
-        phraseIndex : phraseIndex,
-        phraseLength : result.phraseLength
+    /* UDT */
+    result.lookBehind = inLookBehind();
+    result.matchedLength = 0;
+    var charsLeft = chars.length - phraseIndex;
+    udtCallbacks[op.index](result, chars, phraseIndex, syntaxData);
+    validateUdtCallbackResult(udts[op.index], result, charsLeft);
+    result.lookBehind = false;
+    /* UDT */
+
+    if (notLookAround) {
+      /* end AST */
+      if (astDefined) {
+        if (result.state === id.NOMATCH) {
+          that.ast.setLength(astLength);
+        } else {
+          that.ast.up(astIndex, udts[op.index].name, phraseIndex, result.phraseLength);
+        }
+      }
+      /* end AST */
+
+      /* back reference */
+      if (udts[op.index - rules.length].isBkr && (result.state === id.MATCH || result.state === id.EMPTY)) {
+        result.backrefFrame[udts[op.index - rules.length].lower] = {
+          phraseIndex : phraseIndex,
+          phraseLength : result.phraseLength
+        }
       }
     }
   };
@@ -743,25 +810,26 @@ module.exports = function() {
   var opAND = function(opIndex, phraseIndex, result) {
     var op, prdResult;
     op = opcodes[opIndex];
-    prdResult = resultCopy(result);
-    prdResult.lookAhead += 1;
-    opExecute(opIndex + 1, phraseIndex, prdResult);
-    prdResult.lookAhead -= 1;
-    switch (prdResult.state) {
+    lookAround.push(id.AND);
+    opExecute(opIndex + 1, phraseIndex, result);
+    /* !!!! DEBUG !!!! */
+    var test = lookAround.pop();
+    if (test !== id.AND) {
+      throw new Error("opAND: lookAround stack out of synch");
+    }
+    result.phraseLength = 0;
+    switch (result.state) {
     case id.EMPTY:
       result.state = id.EMPTY;
-      result.phraseLength = 0;
       break;
     case id.MATCH:
       result.state = id.EMPTY;
-      result.phraseLength = 0;
       break;
     case id.NOMATCH:
       result.state = id.NOMATCH;
-      result.phraseLength = 0;
       break;
     default:
-      throw [ 'opAND: invalid state ' + prdResult.state ];
+      throw new Error('opAND: invalid state ' + result.state);
     }
   };
   // The `NOT` syntactic predicate operator<br>
@@ -772,23 +840,24 @@ module.exports = function() {
   var opNOT = function(opIndex, phraseIndex, result) {
     var op, prdResult;
     op = opcodes[opIndex];
-    prdResult = resultCopy(result);
-    prdResult.lookAhead += 1;
-    opExecute(opIndex + 1, phraseIndex, prdResult);
-    prdResult.lookAhead -= 1;
-    result.phraseLength = prdResult.phraseLength;
-    switch (prdResult.state) {
+    lookAround.push(id.NOT);
+    opExecute(opIndex + 1, phraseIndex, result);
+    /* !!!! DEBUG !!!! */
+    var test = lookAround.pop();
+    if (test !== id.NOT) {
+      throw new Error("opNOT: lookAround stack out of synch");
+    }
+    result.phraseLength = 0;
+    switch (result.state) {
     case id.EMPTY:
     case id.MATCH:
       result.state = id.NOMATCH;
-      result.phraseLength = 0;
       break;
     case id.NOMATCH:
       result.state = id.EMPTY;
-      result.phraseLength = 0;
       break;
     default:
-      throw [ 'opNOT: invalid state ' + prdResult.state ];
+      throw new Error('opNOT: invalid state ' + result.state);
     }
   };
   // The `TRG` operator<br>
@@ -798,10 +867,12 @@ module.exports = function() {
     var op = opcodes[opIndex];
     result.state = id.NOMATCH;
     result.phraseLength = 0;
-    if (phraseIndex < charsLength) {
+    result.matchedLength = 0;
+    if (phraseIndex < chars.length) {
       if (op.min <= chars[phraseIndex] && chars[phraseIndex] <= op.max) {
         result.state = id.MATCH;
         result.phraseLength = 1;
+        result.matchedLength = 1;
       }
     }
   };
@@ -816,20 +887,23 @@ module.exports = function() {
   var opTBS = function(opIndex, phraseIndex, result) {
     var i, op, len;
     op = opcodes[opIndex];
+    /* NOMATCH default */
     result.state = id.NOMATCH;
     result.phraseLength = 0;
+    result.matchedLength = 0;
     len = op.string.length;
-    if ((phraseIndex + len) <= charsLength) {
+    if ((phraseIndex + len) <= chars.length) {
       for (i = 0; i < len; i += 1) {
         if (chars[phraseIndex + i] !== op.string[i]) {
-          break;
+          /* NOMATCH */
+          result.matchedLength = i;
+          return;
         }
-        result.phraseLength += 1;
       }
-      if (result.phraseLength === len) {
-        result.state = id.MATCH;
-      }
-    }
+      /* MATCH */
+      result.state = id.MATCH;
+      result.phraseLength = len;
+    } /* else NOMATCH */
   };
   // The `TLS` operator<br>
   // Matches its pre-defined phrase against the input string.
@@ -840,26 +914,32 @@ module.exports = function() {
   var opTLS = function(opIndex, phraseIndex, result) {
     var i, code, len, op;
     op = opcodes[opIndex];
+    /* NOMATCH default */
     result.state = id.NOMATCH;
     result.phraseLength = 0;
+    result.matchedLength = 0;
     len = op.string.length;
     if (len === 0) {
+      /* EMPTY match allowed for TLS */
       result.state = id.EMPTY;
-    } else if ((phraseIndex + len) <= charsLength) {
+      return;
+    }
+    if ((phraseIndex + len) <= chars.length) {
       for (i = 0; i < len; i += 1) {
         code = chars[phraseIndex + i];
         if (code >= 65 && code <= 90) {
           code += 32;
         }
         if (code !== op.string[i]) {
-          break;
+          /* NOMATCH */
+          result.matchedLength = i;
+          return;
         }
-        result.phraseLength += 1;
       }
-      if (result.phraseLength === len) {
-        result.state = id.MATCH;
-      }
-    }
+      /* MATCH found */
+      result.state = id.MATCH;
+      result.phraseLength = len;
+    } /* else NOMATCH */
   };
   // The `BKR` operator<br>
   // Matches the last matched phrase of the named rule or UDT against the input string.
@@ -868,21 +948,25 @@ module.exports = function() {
   var opBKR = function(opIndex, phraseIndex, result) {
     var i, code, len, op, lmIndex, lmcode, lower;
     op = opcodes[opIndex];
+    /* NOMATCH default */
     result.state = id.NOMATCH;
     result.phraseLength = 0;
+    result.matchedLength = 0;
     if (op.index < rules.length) {
       lower = rules[op.index].lower;
     } else {
       lower = udts[op.index - rules.length].lower;
     }
-    if(result.backrefFrame[lower] === null){
+    if (result.backrefFrame[lower] === null) {
       return;
     }
     lmIndex = result.backrefFrame[lower].phraseIndex;
     len = result.backrefFrame[lower].phraseLength;
     if (len === 0) {
       result.state = id.EMPTY;
-    } else if ((phraseIndex + len) <= charsLength) {
+      return;
+    }
+    if ((phraseIndex + len) <= chars.length) {
       if (op.insensitive) {
         /* case-insensitive match */
         for (i = 0; i < len; i += 1) {
@@ -895,26 +979,282 @@ module.exports = function() {
             lmcode += 32;
           }
           if (code !== lmcode) {
-            break;
+            /* NOMATCH */
+            result.matchedLength = i;
+            return;
           }
-          result.phraseLength += 1;
         }
+        /* MATCH */
+        result.state = id.MATCH;
+        result.phraseLength = len;
+        result.matchedLength = len;
       } else {
         /* case-sensitive match */
         for (i = 0; i < len; i += 1) {
           code = chars[phraseIndex + i];
           lmcode = chars[lmIndex + i];
           if (code !== lmcode) {
-            break;
+            /* NOMATCH */
+            result.matchedLength = i;
+            return;
           }
-          result.phraseLength += 1;
         }
       }
-      if (result.phraseLength === len) {
-        result.state = id.MATCH;
+      /* MATCH */
+      result.state = id.MATCH;
+      result.phraseLength = len;
+      result.matchedLength = len;
+    } /* else NOMATCH */
+  };
+  var opBKA = function(opIndex, phraseIndex, result) {
+    var op, prdResult;
+    op = opcodes[opIndex];
+    lookAround.push(id.BKA);
+    opExecute(opIndex + 1, phraseIndex, result);
+    /* !!!! DEBUG !!!! */
+    var test = lookAround.pop();
+    if (test !== id.BKA) {
+      throw new Error("opBKA: lookAround stack out of sync");
+    }
+    switch (result.state) {
+    case id.EMPTY:
+      result.state = id.EMPTY;
+      result.phraseLength = 0;
+      break;
+    case id.MATCH:
+      result.state = id.EMPTY;
+      result.phraseLength = 0;
+      break;
+    case id.NOMATCH:
+      result.state = id.NOMATCH;
+      result.phraseLength = 0;
+      break;
+    default:
+      throw new Error('opBKA: invalid state ' + result.state);
+    }
+  }
+  var opBKN = function(opIndex, phraseIndex, result) {
+    var op, prdResult;
+    op = opcodes[opIndex];
+    lookAround.push(id.BKN);
+    opExecute(opIndex + 1, phraseIndex, result);
+    /* !!!! DEBUG !!!! */
+    var test = lookAround.pop();
+    if (test !== id.BKN) {
+      throw new Error("opBKN: lookAround stack out of sync");
+    }
+    switch (result.state) {
+    case id.EMPTY:
+    case id.MATCH:
+      result.state = id.NOMATCH;
+      result.phraseLength = 0;
+      break;
+    case id.NOMATCH:
+      result.state = id.EMPTY;
+      result.phraseLength = 0;
+      break;
+    default:
+      throw new Error('opBKN: invalid state ' + result.state);
+    }
+  }
+  var opCATBehind = function(opIndex, phraseIndex, result) {
+    var op, success, astLength, catResult, catCharIndex, catMatched, childOpIndex;
+    op = opcodes[opIndex];
+    if (that.ast) {
+      astLength = that.ast.getLength();
+    }
+    catResult = resultCopy(result);
+    success = true;
+    catCharIndex = phraseIndex;
+    catMatched = 0;
+    for (var i = op.children.length - 1; i >= 0; i -= 1) {
+      opExecute(op.children[i], catCharIndex, catResult);
+      catCharIndex -= catResult.phraseLength;
+      catMatched += catResult.phraseLength;
+      if (catResult.state === id.NOMATCH) {
+        success = false;
+        break;
       }
     }
-  };
+    if (success) {
+      result.state = catMatched === 0 ? id.EMPTY : id.MATCH;
+      result.phraseLength = catMatched;
+    } else {
+      result.state = id.NOMATCH;
+      result.phraseLength = 0;
+    }
+    if (that.ast && result.state === id.NOMATCH) {
+      that.ast.setLength(astLength);
+    }
+  }
+  var opREPBehind = function(opIndex, phraseIndex, result) {
+    var nextResult, nextCharIndex, matchedCount, matchedChars, op, astLength;
+    op = opcodes[opIndex];
+    nextResult = resultCopy(result);
+    nextCharIndex = phraseIndex;
+    matchedCount = 0;
+    matchedChars = 0;
+    if (that.ast) {
+      astLength = that.ast.getLength();
+    }
+    while (true) {
+      if (nextCharIndex <= charsFirst) {
+        /* exit on end of input string */
+        break;
+      }
+      opExecute(opIndex + 1, nextCharIndex, nextResult);
+      if (nextResult.state === id.NOMATCH) {
+        /* always end if the child node fails */
+        break;
+      }
+      if (nextResult.state === id.EMPTY) {
+        /* REP always succeeds when the child node returns an empty phrase */
+        /* this may not seem obvious, but that's the way it works out */
+        break;
+      }
+      matchedCount += 1;
+      matchedChars += nextResult.phraseLength;
+      nextCharIndex -= nextResult.phraseLength;
+      if (matchedCount === op.max) {
+        /* end on maxed out reps */
+        break;
+      }
+    }
+    /* evaluate the match count according to the min, max values */
+    if (nextResult.state === id.EMPTY) {
+      result.state = (matchedChars === 0) ? id.EMPTY : id.MATCH;
+      result.phraseLength = matchedChars;
+    } else if (matchedCount >= op.min) {
+      result.state = (matchedChars === 0) ? id.EMPTY : id.MATCH;
+      result.phraseLength = matchedChars;
+    } else {
+      result.state = id.NOMATCH;
+      result.phraseLength = 0;
+    }
+    if (that.ast && result.state === id.NOMATCH) {
+      that.ast.setLength(astLength);
+    }
+  }
+  var opTRGBehind = function(opIndex, phraseIndex, result) {
+    var op = opcodes[opIndex];
+    result.state = id.NOMATCH;
+    result.phraseLength = 0;
+    if (phraseIndex >= charsFirst) {
+      if (op.min <= chars[phraseIndex] && chars[phraseIndex] <= op.max) {
+        result.state = id.MATCH;
+        result.phraseLength = 1;
+      }
+    }
+  }
+  var opTBSBehind = function(opIndex, phraseIndex, result) {
+    var i, op, len, phraseBegin;
+    op = opcodes[opIndex];
+    /* NOMATCH default */
+    result.state = id.NOMATCH;
+    result.phraseLength = 0;
+    len = op.string.length;
+    phraseBegin = phraseIndex - len + 1;
+    if (phraseBegin >= charsFirst) {
+      for (i = 0; i < len; i += 1) {
+        if (chars[phraseBegin + i] !== op.string[i]) {
+          /* NOMATCH */
+          return;
+        }
+      }
+      /* MATCH */
+      result.state = id.MATCH;
+      result.phraseLength = len;
+    } /* else NOMATCH */
+  }
+  var opTLSBehind = function(opIndex, phraseIndex, result) {
+    var i, code, len, op, phraseBegin;
+    var i, code, len, op;
+    op = opcodes[opIndex];
+    /* NOMATCH default */
+    result.state = id.NOMATCH;
+    result.phraseLength = 0;
+    len = op.string.length;
+    if (len === 0) {
+      /* EMPTY match allowed for TLS */
+      result.state = id.EMPTY;
+      result.phraseLength = 0;
+      return;
+    }
+    phraseBegin = phraseIndex - len + 1;
+    if (phraseBegin >= charsFirst) {
+      for (i = 0; i < len; i += 1) {
+        code = chars[phraseIndex + i];
+        if (code >= 65 && code <= 90) {
+          code += 32;
+        }
+        if (code !== op.string[i]) {
+          /* NOMATCH */
+          return;
+        }
+      }
+      /* MATCH found */
+      result.state = id.MATCH;
+      result.phraseLength = len;
+    } /* else NOMATCH */
+  }
+  var opBKRBehind = function(opIndex, phraseIndex, result) {
+    var i, code, len, op, lmIndex, lmcode, lower, phraseBegin;
+    op = opcodes[opIndex];
+    /* NOMATCH default */
+    result.state = id.NOMATCH;
+    result.phraseLength = 0;
+    if (op.index < rules.length) {
+      lower = rules[op.index].lower;
+    } else {
+      lower = udts[op.index - rules.length].lower;
+    }
+    if (result.backrefFrame[lower] === null) {
+      return;
+    }
+    lmIndex = result.backrefFrame[lower].phraseIndex;
+    len = result.backrefFrame[lower].phraseLength;
+    if (len === 0) {
+      result.state = id.EMPTY;
+      result.phraseLength = 0;
+      return;
+    }
+    phraseBegin = phraseIndex - len + 1;
+    if (phraseBegin >= charsFirst) {
+      if (op.insensitive) {
+        /* case-insensitive match */
+        for (i = 0; i < len; i += 1) {
+          code = chars[phraseBegin + i];
+          lmcode = chars[lmIndex + i];
+          if (code >= 65 && code <= 90) {
+            code += 32;
+          }
+          if (lmcode >= 65 && lmcode <= 90) {
+            lmcode += 32;
+          }
+          if (code !== lmcode) {
+            /* NOMATCH */
+            return;
+          }
+        }
+        /* MATCH */
+        result.state = id.MATCH;
+        result.phraseLength = len;
+      } else {
+        /* case-sensitive match */
+        for (i = 0; i < len; i += 1) {
+          code = chars[phraseBegin + i];
+          lmcode = chars[lmIndex + i];
+          if (code !== lmcode) {
+            /* NOMATCH */
+            return;
+          }
+        }
+      }
+      /* MATCH */
+      result.state = id.MATCH;
+      result.phraseLength = len;
+    } /* else NOMATCH */
+  }
   // Generalized execution function.<br>
   // Having a single, generalized function, allows a single location
   // for tracing and statistics gathering functions to be called.
@@ -941,47 +1281,100 @@ module.exports = function() {
     result.success = false;
     if (that.trace !== null) {
       /* collect the trace record for down the parse tree */
-      that.trace.down(op, result.state, phraseIndex, result.phraseLength);
+      that.trace.down(op, result.state, phraseIndex, result.phraseLength, result.matchedLength, lookAroundValue());
     }
-    switch (op.type) {
-    case id.ALT:
-      opALT(opIndex, phraseIndex, result);
-      break;
-    case id.CAT:
-      opCAT(opIndex, phraseIndex, result);
-      break;
-    case id.RNM:
-      opRNM(opIndex, phraseIndex, result);
-      break;
-    case id.UDT:
-      opUDT(opIndex, phraseIndex, result);
-      break;
-    case id.REP:
-      opREP(opIndex, phraseIndex, result);
-      break;
-    case id.AND:
-      opAND(opIndex, phraseIndex, result);
-      break;
-    case id.NOT:
-      opNOT(opIndex, phraseIndex, result);
-      break;
-    case id.TRG:
-      opTRG(opIndex, phraseIndex, result);
-      break;
-    case id.TBS:
-      opTBS(opIndex, phraseIndex, result);
-      break;
-    case id.TLS:
-      opTLS(opIndex, phraseIndex, result);
-      break;
-    case id.BKR:
-      opBKR(opIndex, phraseIndex, result);
-      break;
-    default:
-      ret = false;
-      break;
+    if (inLookBehind()) {
+      switch (op.type) {
+      case id.ALT:
+        opALT(opIndex, phraseIndex, result);
+        break;
+      case id.CAT:
+        opCATBehind(opIndex, phraseIndex, result);
+        break;
+      case id.REP:
+        opREPBehind(opIndex, phraseIndex, result);
+        break;
+      case id.RNM:
+        opRNM(opIndex, phraseIndex, result);
+        break;
+      case id.UDT:
+        opUDT(opIndex, phraseIndex, result);
+        break;
+      case id.AND:
+        opAND(opIndex, phraseIndex, result);
+        break;
+      case id.NOT:
+        opNOT(opIndex, phraseIndex, result);
+        break;
+      case id.TRG:
+        opTRGBehind(opIndex, phraseIndex, result);
+        break;
+      case id.TBS:
+        opTBSBehind(opIndex, phraseIndex, result);
+        break;
+      case id.TLS:
+        opTLSBehind(opIndex, phraseIndex, result);
+        break;
+      case id.BKR:
+        opBKRBehind(opIndex, phraseIndex, result);
+        break;
+      case id.BKA:
+        opBKA(opIndex, phraseIndex, result);
+        break;
+      case id.BKN:
+        opBKN(opIndex, phraseIndex, result);
+        break;
+      default:
+        ret = false;
+        break;
+      }
+    } else {
+      switch (op.type) {
+      case id.ALT:
+        opALT(opIndex, phraseIndex, result);
+        break;
+      case id.CAT:
+        opCAT(opIndex, phraseIndex, result);
+        break;
+      case id.REP:
+        opREP(opIndex, phraseIndex, result);
+        break;
+      case id.RNM:
+        opRNM(opIndex, phraseIndex, result);
+        break;
+      case id.UDT:
+        opUDT(opIndex, phraseIndex, result);
+        break;
+      case id.AND:
+        opAND(opIndex, phraseIndex, result);
+        break;
+      case id.NOT:
+        opNOT(opIndex, phraseIndex, result);
+        break;
+      case id.TRG:
+        opTRG(opIndex, phraseIndex, result);
+        break;
+      case id.TBS:
+        opTBS(opIndex, phraseIndex, result);
+        break;
+      case id.TLS:
+        opTLS(opIndex, phraseIndex, result);
+        break;
+      case id.BKR:
+        opBKR(opIndex, phraseIndex, result);
+        break;
+      case id.BKA:
+        opBKA(opIndex, phraseIndex, result);
+        break;
+      case id.BKN:
+        opBKN(opIndex, phraseIndex, result);
+        break;
+      default:
+        ret = false;
+        break;
+      }
     }
-    if (phraseIndex + result.phraseLength > maxMatched) {
+    if (!inLookAround() && (phraseIndex + result.phraseLength > maxMatched)) {
       maxMatched = phraseIndex + result.phraseLength;
     }
     if (that.stats !== null) {
@@ -990,7 +1383,7 @@ module.exports = function() {
     }
     if (that.trace !== null) {
       /* collect the trace record for up the parse tree */
-      that.trace.up(op, result.state, phraseIndex, result.phraseLength);
+      that.trace.up(op, result.state, phraseIndex, result.phraseLength, result.matchedLength, lookAroundValue());
     }
     treeDepth -= 1;
     return ret;

@@ -53,10 +53,22 @@ module.exports = function() {
   var MODE_HEX = 16;
   var MODE_DEC = 10;
   var MODE_ASCII = 8;
+  var MODE_UNICODE = 32;
   var MAX_PHRASE = 128;
   var MAX_TLS = 5;
-  var PHRASE_END = "&bull;";
-  var PHRASE_CONTINUE = "&hellip;"
+  var CLASS_MATCH = "match";
+  var CLASS_BACKTRACK = "backtrack";
+  var CLASS_EMPTY = "empty";
+  var CLASS_LOOKAHEAD = "look-ahead";
+  var CLASS_LOOKBEHIND = "look-behind";
+  var CLASS_REMAINDER = "remainder";
+  var CLASS_CTRL = "ctrl-char";
+  var CLASS_END = "line-end";
+  var PHRASE_END_CHAR = "&bull;";
+  var PHRASE_CONTINUE_CHAR = "&hellip;";
+  var PHRASE_END = '<span class="'+CLASS_END+'">&bull;</span>';
+  var PHRASE_CONTINUE = '<span class="'+CLASS_END+'">&hellip;</span>';
+  var EMPTY_CHAR = '<span class="'+CLASS_EMPTY+'">&#120634;</span>';
   var utils = require("./utilities.js");
   var circular = new (require("./circular-buffer.js"))();
   var id = require("./identifiers.js");
@@ -67,8 +79,6 @@ module.exports = function() {
   var treeDepth = 0;
   var lineStack = [];
   var chars = null;
-  var charsFirst = 0;
-  var charsLength = 0;
   var rules = null;
   var udts = null;
   var operatorFilter = [];
@@ -134,12 +144,8 @@ module.exports = function() {
           } else if (upper === 'BKR') {
             operatorFilter[id.BKR] = true;
           } else {
-            throw new Error(
-                thisFileName
-                    + "initOpratorFilter: '"
-                    + name
-                    + "' not a valid operator name."
-                    + " Must be <all>, <none>, alt, cat, rep, and, not, tls, tbs, bkr or trg");
+            throw new Error(thisFileName + "initOpratorFilter: '" + name + "' not a valid operator name."
+                + " Must be <all>, <none>, alt, cat, rep, and, not, tls, tbs, bkr or trg");
           }
         }
       }
@@ -195,8 +201,7 @@ module.exports = function() {
           var lower = name.toLowerCase();
           i = list.indexOf(lower);
           if (i < 0) {
-            throw new Error(thisFileName + "initRuleFilter: '" + name
-                + "' not a valid rule or udt name");
+            throw new Error(thisFileName + "initRuleFilter: '" + name + "' not a valid rule or udt name");
           }
           ruleFilter[i] = true;
         }
@@ -224,22 +229,20 @@ module.exports = function() {
     return maxLines;
   }
   // Called only by the `parser.js` object. No verification of input.
-  this.init = function(rulesIn, udtsIn, charsIn, beg, len) {
+  this.init = function(rulesIn, udtsIn, charsIn) {
     lines.length = 0;
     lineStack.length = 0;
     totalRecords = 0;
     filteredRecords = 0;
     treeDepth = 0;
     chars = charsIn;
-    charsFirst = beg;
-    charsLength = len;
     rules = rulesIn;
     udts = udtsIn;
     initOperatorFilter();
     initRuleFilter();
     circular.init(maxLines);
   };
-  /* returns true if this records passes through the designated filter, false if the record is to be skipped*/
+  /* returns true if this records passes through the designated filter, false if the record is to be skipped */
   var filter = function(op) {
     var ret = false;
     if (op.type === id.RNM) {
@@ -260,7 +263,7 @@ module.exports = function() {
     return ret;
   }
   // Collect the "down" record.
-  this.down = function(op, state, offset, length) {
+  this.down = function(op, state, offset, length, backtrack, lookAround) {
     totalRecords += 1;
     if (filter(op)) {
       lineStack.push(filteredRecords);
@@ -272,14 +275,16 @@ module.exports = function() {
         opcode : op,
         state : state,
         phraseIndex : offset,
-        phraseLength : length
+        phraseLength : length,
+        backtrack : backtrack,
+        lookAround : lookAround
       };
       filteredRecords += 1;
       treeDepth += 1;
     }
   };
   // Collect the "up" record.
-  this.up = function(op, state, offset, length) {
+  this.up = function(op, state, offset, length, backtrack, lookAround) {
     totalRecords += 1;
     if (filter(op)) {
       var thisLine = filteredRecords;
@@ -297,48 +302,194 @@ module.exports = function() {
         opcode : op,
         state : state,
         phraseIndex : offset,
-        phraseLength : length
+        phraseLength : length,
+        backtrack : backtrack,
+        lookAround : lookAround
       };
       filteredRecords += 1;
     }
   };
+  var htmlHeader = function(mode, caption){
+    /* open the page */
+    /* write the HTML5 header with table style */
+    /* open the <table> tag */
+    var modeName;
+    switch(mode){
+    case MODE_HEX:
+      modeName = "hexidecimal";
+      break;
+    case MODE_DEC:
+      modeName = "decimal";
+      break;
+    case MODE_ASCII:
+      modeName = "ASCII";
+      break;
+    case MODE_UNICODE:
+      modeName = "UNICODE";
+      break;
+    default:
+      throw new Error(thisFileName + "htmlHeader: unrecognized mode: " + mode);
+      break;
+    }
+    /* page colors */
+    var pageTextColor = "#000000";
+    var pageBackgroundColor = "#FFFFFF";
+    var tableBorderColor = "#000000";
+    var matchColor = "#0066ff";
+// var nomatchColor = "#ff4d4d";
+// var emptyColor = "#00cc00";
+    var emptyColor = "#0fbd0f";
+// var lookAheadColor = "#00ffff";
+    var lookAheadColor = "#008b8b";
+// var lookBehindColor = "#ff33ff";
+//    var lookBehindColor = "#e600e5";
+    var lookBehindColor = "#bf00ff";
+    var backtrackColor = "#ff4d4d";
+    var lineEndColor = "#000000";
+//    var remainderColor = "#a9a9a9";
+    var remainderColor = "#999999";
+    var controlCharacterColor = "#4b0082";
+    var title = "trace";
+    var header = '<!DOCTYPE html>\n';
+    header += '<html lang="en">\n';
+    header += '<head>\n';
+    header += '<meta charset="utf-8">\n';
+    header += '<title>' + title + '</title>\n';
+// header += '<link rel="stylesheet" type="text/css" href="trace-table.css" media="screen" title="Sinorca (screen)" />\n';
+    header += '<style>\n';
+    header += 'body {\n';
+    header += '  color: '+pageTextColor+';\n';
+    header += '  background-color: '+pageBackgroundColor+';\n';
+    header += '  font-family: monospace;\n';
+    header += '  font-size: .9em\n';
+    header += '  margin: 0 0 10px 10px;\n';
+    header += '  padding: 0;\n';
+    header += '}\n';
+// header += 'h1, h2, h3, h4, h5, h6 {color: #6297bc;}\n';
+    header += 'h1, h2, h3, h4, h5, h6 {margin: 5px 0 5px 0;}\n';
+    header += 'table.trace-table,\n';
+    header += '.trace-table th,\n';
+    header += '.trace-table td{text-align:right;border:1px solid '+tableBorderColor+';border-collapse:collapse;}\n';
+    header += '.trace-table th:last-child{text-align:left;}\n';
+    header += '.trace-table th:nth-last-child(2){text-align:left;}\n';
+    header += '.trace-table td:last-child{text-align:left;}\n';
+    header += '.trace-table td:nth-last-child(2){text-align:left;}\n';
+    header += 'table.trace-table caption{font-weight: bold;}\n';
+    header += 'span.'+CLASS_MATCH+'{font-weight: bold; color: '+matchColor+';}\n';
+    header += 'span.'+CLASS_EMPTY+'{font-weight: bold; color: '+emptyColor+';}\n';
+    header += 'span.'+CLASS_BACKTRACK+'{font-weight: bold; color: '+backtrackColor+';}\n';
+    header += 'span.'+CLASS_LOOKAHEAD+'{font-weight: bold; color: '+lookAheadColor+';}\n';
+    header += 'span.'+CLASS_LOOKBEHIND+'{font-weight: bold; color: '+lookBehindColor+';}\n';
+    header += 'span.'+CLASS_REMAINDER+'{font-weight: bold; color: '+remainderColor+';}\n';
+    header += 'span.'+CLASS_CTRL+'{font-weight: bold; color: '+controlCharacterColor+';}\n';
+    header += 'span.'+CLASS_END+'{font-weight: bold; color: '+lineEndColor+';}\n';
+    header += '</style>\n';
+    header += '</head>\n<body>\n';
+    header += '<h1>JavaScript APG Trace</h1>\n';
+    header += '<h3>&nbsp;&nbsp;&nbsp;&nbsp;display mode: ' + modeName + '</h3>\n';
+    header += '<h5>&nbsp;&nbsp;&nbsp;&nbsp;' + new Date() + '</h5>\n';
+    header += '<table class="trace-table">\n';
+    if (typeof (caption) === "string") {
+      header += '<caption>' + caption + '</caption>';
+    }
+    return header;
+  }
+  var htmlFooter = function(){
+    var footer = "";
+    /* close the </table> tag */
+    footer += '</table>\n';
+    /* display a table legend */
+    footer += '<p>legend:<br>\n';
+    footer += '(a)&nbsp;-&nbsp;line number<br>\n';
+    footer += '(b)&nbsp;-&nbsp;matching line number<br>\n';
+    footer += '(c)&nbsp;-&nbsp;phrase offset<br>\n';
+    footer += '(d)&nbsp;-&nbsp;phrase length<br>\n';
+    footer += '(e)&nbsp;-&nbsp;relative tree depth<br>\n';
+    footer += '(f)&nbsp;-&nbsp;operator state<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&darr;&nbsp;&nbsp;phrase opened<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="match">&uarr;M</span> phrase matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="empty">&uarr;E</span> empty phrase matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="nomatch">&uarr;N</span> phrase not matched<br>\n';
+    footer += 'operator&nbsp;-&nbsp;ALT, CAT, REP, RNM, TRG, TLS, TBS<sup>&dagger;</sup>, UDT, AND, NOT, BKA, BKN, BKR<sup>&Dagger;</sup><br>\n';
+    footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to '+MAX_PHRASE+' characters of the phrase being matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_MATCH+'">matched characters</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_LOOKAHEAD+'">matched characters in look ahead mode</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_LOOKBEHIND+'">matched characters in look behind mode</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_BACKTRACK+'">backtracked characters</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_REMAINDER+'">remainder characters(not yet examined by parser)</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_CTRL+'">control characters</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;'+EMPTY_CHAR+' empty string<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;'+PHRASE_END+' end of input string<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;'+PHRASE_CONTINUE+' input string truncated<br>\n';
+    footer += '</p>\n';
+    footer += '<p>\n';
+    footer += '<sup>&dagger;</sup>original ABNF operators:<br>\n';
+    footer += 'ALT - alternation<br>\n';
+    footer += 'CAT - concatenation<br>\n';
+    footer += 'REP - repetition<br>\n';
+    footer += 'RNM - rule name<br>\n';
+    footer += 'TRG - terminal range<br>\n';
+    footer += 'TLS - terminal literal string (case insensitive)<br>\n';
+    footer += 'TBS - terminal binary string (case sensitive)<br>\n';
+    footer += '<br>\n';
+    footer += '<sup>&Dagger;</sup>super set SABNF operators:<br>\n';
+    footer += 'UDT - user-defined terminal<br>\n';
+    footer += 'AND - positive look ahead<br>\n';
+    footer += 'NOT - negative look ahead<br>\n';
+    footer += 'BKA - positive look behind<br>\n';
+    footer += 'BKN - negative look behind<br>\n';
+    footer += 'BKR - back referance<br>\n';
+    footer += '</p>\n';
+    /* close the page */
+    footer += '</body>\n';
+    footer += '</html>\n';
+    return footer;
+  }
+  this.toHtml = function(modearg, caption){
+    /* writes the trace records as a table in a complete html page */
+    var mode = MODE_ASCII;
+    if (typeof (modearg) === "string" && modearg.length >= 3) {
+      var modein = modearg.toLowerCase().slice(0,3);
+      if (modein === 'hex') {
+        mode = MODE_HEX;
+      } else if (modein === 'dec') {
+        mode = MODE_DEC;
+      } else if (modein === 'uni') {
+        mode = MODE_UNICODE;
+      }
+    }
+    var html = "";
+    html += htmlHeader(mode, caption);
+    html += toTable(mode);
+    html += htmlFooter();
+    return html;
+  }
   // Returns the filtered records, formatted as an HTML table.
   // - *caption* - optional caption for the HTML table
   // - *mode* - "hex", "dec", "ascii", display string characters as
   // hexidecimal, decimal or ascii printing characters, respectively. (default "ascii")
   // - *classname* - default is "apg-table" but maybe someday there will be a user who
   // really wants to use his/her own style sheet.
-  this.displayHtml = function(caption, mode, classname) {
+  var toTable = function(mode) {
     if (rules === null) {
       return "";
     }
-    if (typeof (mode) === "string") {
-      mode = mode.toLowerCase()
-      if (mode === 'hex') {
-        mode = MODE_HEX;
-      } else if (mode === 'dec') {
-        mode = MODE_DEC;
-      } else {
-        mode = MODE_ASCII;
-      }
-    } else {
-      mode = MODE_ASCII;
-    }
-    if (typeof (classname) !== "string") {
-      classname = "apg-table";
-    }
     var html = '';
-    var line, thisLine, thatLine;
-    html += '<table class="' + classname + '">\n';
-    if (typeof (caption) === "string") {
-      html += '<caption>' + caption + '</caption>';
-    }
+    var line, thisLine, thatLine, lookAhead, lookBehind;
     html += '<tr><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th>';
     html += '<th>operator</th><th>phrase</th></tr>\n';
     circular.forEach(function(lineIndex, index) {
       var line = lines[lineIndex];
       thisLine = line.thisLine;
       thatLine = (line.thatLine !== undefined) ? line.thatLine : '--';
+      lookAhead = false;
+      lookBehind = false;
+      if(line.lookAround === id.AND || line.lookAround === id.NOT){
+        lookAhead = true;
+      }
+      if(line.lookAround === id.BKA || line.lookAround === id.BKN){
+        lookBehind = true;
+      }
       html += '<tr>';
       html += '<td>' + thisLine + '</td><td>' + thatLine + '</td>';
       html += '<td>' + line.phraseIndex + '</td>';
@@ -350,21 +501,28 @@ module.exports = function() {
         html += '&darr;&nbsp;';
         break;
       case id.MATCH:
-        html += '<b>&uarr;M</b>';
+        html += '<span class="match">&uarr;M</span>';
         break;
       case id.NOMATCH:
-        html += '<kbd>&uarr;N</kbd>';
+        html += '<span class="nomatch">&uarr;N</span>';
         break;
       case id.EMPTY:
-        html += '<i>&uarr;E</i>';
+        html += '<span class="empty">&uarr;E</span>';
         break;
       default:
-        html += '<kbd>--</kbd>';
+        html += '<span class="nomatch">--</span>';
         break;
       }
       html += '</td>';
       html += '<td>';
-      html += that.indent(line.depth) + utils.opcodeToString(line.opcode.type);
+      html += that.indent(line.depth);
+      if(lookAhead){
+        html += '<span class="look-ahead">';
+      }
+      if(lookBehind){
+        html += '<span class="look-behind">';
+      }
+      html += utils.opcodeToString(line.opcode.type);
       if (line.opcode.type === id.RNM) {
         html += '(' + rules[line.opcode.index].name + ') ';
       }
@@ -387,37 +545,20 @@ module.exports = function() {
       if (line.opcode.type === id.REP) {
         html += '(' + displayRep(mode, line.opcode) + ') ';
       }
+      if(lookAhead || lookBehind){
+        html += '</span>';
+      }
       html += '</td>';
       html += '<td>';
-      html += displayPhrase(mode, chars, line.phraseIndex, line.phraseLength,
-          line.state);
+//      html += displayPhrase(mode, chars, line.phraseIndex, line.phraseLength, line.state);
+//      html += subdec(chars, line.phraseIndex, chars.length - line.phraseIndex);
+      html += displayPhrase(lookAhead, lookBehind, mode, line.state, chars, line.phraseIndex, line.phraseLength, line.backtrack);
       html += '</td></tr>\n';
 
     });
     html += '<tr><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th>';
     html += '<th>operator</th><th>phrase</th></tr>\n';
     html += '</table>\n';
-
-    html += '<p>\n';
-    html += '(a)&nbsp;-&nbsp;line number<br />\n';
-    html += '(b)&nbsp;-&nbsp;matching line number<br />\n';
-    html += '(c)&nbsp;-&nbsp;phrase offset<br />\n';
-    html += '(d)&nbsp;-&nbsp;phrase length<br />\n';
-    html += '(e)&nbsp;-&nbsp;relative tree depth<br />\n';
-    html += '(f)&nbsp;-&nbsp;operator state<br />\n';
-    html += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&darr;open<br />\n';
-    html += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&uarr;final<br />\n';
-    html += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;M phrase matched<br />\n';
-    html += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;N phrase not matched<br />\n';
-    html += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;E phrase matched, empty<br />\n';
-    html += 'operator&nbsp;-&nbsp;ALT, CAT, REP, AND, NOT, TRG, TLS, TBS, UDT(udt name) or RNM(rule name)<br />\n';
-    html += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE
-        + ' characters of the phrase being matched<br />\n';
-    html += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>'
-        + PHRASE_END + '</code> = End of String<br />\n';
-    html += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>'
-        + PHRASE_CONTINUE + '</code> = String Truncated<br />\n';
-    html += '</p>\n';
     return html;
   };
 
@@ -425,11 +566,13 @@ module.exports = function() {
   this.indent = function(depth) {
     var html = '';
     for (var i = 0; i < depth; i += 1) {
-      if (i % 2 === 0) {
-        html += '&nbsp;';
-      } else {
-        html += '&#46;';
-      }
+      html += '.';
+// html += '&#46;';
+// if (i % 2 === 0) {
+// html += '&nbsp;';
+// } else {
+// html += '&#46;';
+// }
     }
     return html;
   };
@@ -464,19 +607,19 @@ module.exports = function() {
           hex = "0" + hex;
         }
         html = "x" + hex;
-        if(op.max < Infinity){
+        if (op.max < Infinity) {
           hex = op.max.toString(16).toUpperCase();
           if (hex.length % 2 !== 0) {
             hex = "0" + hex;
           }
-        }else{
+        } else {
           hex = "inf";
         }
         html += "&ndash;" + hex;
       } else {
-        if(op.max < Infinity){
+        if (op.max < Infinity) {
           html = op.min.toString(10) + "&ndash;" + op.max.toString(10);
-        }else{
+        } else {
           html = op.min.toString(10) + "&ndash;" + "inf";
         }
       }
@@ -535,13 +678,11 @@ module.exports = function() {
           charl = op.string[i];
           if (charl >= 97 && charl <= 122) {
             charu = charl - 32;
-            html += (charu.toString(base) + '/' + charl.toString(base))
-                .toUpperCase();
+            html += (charu.toString(base) + '/' + charl.toString(base)).toUpperCase();
           } else if (charl >= 65 && charl <= 90) {
             charu = charl;
             charl += 32;
-            html += (charu.toString(base) + '/' + charl.toString(base))
-                .toUpperCase();
+            html += (charu.toString(base) + '/' + charl.toString(base)).toUpperCase();
           } else {
             html += charl.toString(base).toUpperCase();
           }
@@ -562,85 +703,262 @@ module.exports = function() {
     }
     return html;
   }
-  var displayPhrase = function(mode, chars, offset, len, state) {
-    var i;
+//  var displayPhrase = function(mode, chars, offset, len, state) {
+ var displayPhrase = function(ahead, behind, mode, state, chars, index, length, backtrack) {
     var html = '';
-    var offMax = charsLength;
-    var lastChar = '<code>' + PHRASE_END + '</code>';
-    if (offMax - offset > MAX_PHRASE) {
-      offMax = offset + MAX_PHRASE;
-      lastChar = '<code>' + PHRASE_CONTINUE + '</code>';
+    var beg1, len1, beg2, len2;
+    var lastchar = PHRASE_END;
+    var spanbeg1 = "";
+    var spanend1 = "";
+    var spanbeg2 = '<span class="'+CLASS_REMAINDER+'">'
+    var spanend2 = '</span>';
+    if(behind){
+      /* do it differently */
+      html += "TODO: look behind";
+    }else{
+      switch(state){
+      case id.ACTIVE:
+        beg1 = index;
+        len1 = 0;
+        beg2 = index;
+        len2 = chars.length - beg2;
+        break;
+      case id.EMPTY:
+        html += EMPTY_CHAR;
+        if(backtrack > 0){
+          beg1 = index;
+          len1 = backtrack;
+          spanbeg1 = '<span class="'+CLASS_BACKTRACK+'">'
+          spanend1 = '</span>';
+          beg2 = index + len1;
+          len2 = chars.length - beg2;
+        }else{
+          beg1 = index;
+          len1 = 0;
+          beg2 = index;
+          len2 = chars.length - beg2;
+        }
+        break;
+      case id.MATCH:
+        spanbeg1 = '<span class="'
+        spanbeg1 += ahead ? CLASS_LOOKAHEAD: CLASS_MATCH;
+        spanbeg1 += '">';
+        spanend1 = '</span>';
+        beg1 = index;
+        len1 = length;
+        beg2 = index + len1;
+        len2 = chars.length - beg2;
+        break;
+      case id.NOMATCH:
+        spanbeg1 = '<span class="'+CLASS_BACKTRACK+'">';
+        spanend1 = '</span>';
+        beg1 = index;
+        len1 = backtrack;
+        beg2 = index + len1;
+        len2 = chars.length - beg2;
+        break;
+      }
+      lastchar = PHRASE_END;
+      if(len1 > MAX_PHRASE){
+        len1 = MAX_PHRASE;
+        lastchar = PHRASE_CONTINUE;
+        len2 = 0;
+      }else if(len1 + len2 > MAX_PHRASE){
+        lastchar = PHRASE_CONTINUE;
+        len2 = MAX_PHRASE - len1;
+      }
+      if(len1 > 0){
+        html += spanbeg1;
+        html += subPhrase(mode, chars, beg1, len1);
+        html += spanend1;
+      }
+      if(len2 > 0){
+        html += spanbeg2;
+        html += subPhrase(mode, chars, beg2, len2);
+        html += spanend2;
+      }
+      html += lastchar;
     }
-    var offLen = offset + len;
-    if (offLen > offMax) {
-      offLen = offMax;
-    }
-    var count = 0;
-    if (state === id.MATCH && len > 0) {
-      html += '<b>';
-    } else if (state === id.NOMATCH && len > 0) {
-      html += '<var>';
-    } else if (state === id.EMPTY) {
-      html += '<i>&#120634;</i>'
-    }
-    var matchedPhrase = subPhrase(mode, chars, offset, offLen);
-    html += matchedPhrase;
-    if (state === id.MATCH && len > 0) {
-      html += '</b>';
-    } else if (state === id.NOMATCH && len > 0) {
-      html += '</var>';
-    }
-    html += subPhrase(mode, chars, offLen, offMax, matchedPhrase.length);
-    html += lastChar;
     return html;
   }
-  var subPhrase = function(mode, chars, beg, end, prefix) {
-    var html = "";
-    var char;
-    var threshold;
-    if (typeof (prefix) === "number") {
-      threshold = (prefix > 0) ? -1 : beg;
-    } else {
-      threshold = beg;
+  var subPhrase = function(mode, chars, index, length) {
+    if(length === 0){
+      return "";
     }
-    for (var i = beg; i < end; i += 1) {
-      if (mode === MODE_HEX) {
-        char = chars[i].toString(16).toUpperCase();
-        if (char.length % 2 !== 0) {
-          char = "0" + char;
+    switch(mode){
+    case MODE_HEX:
+      return subhex(chars, index, length);
+      break;
+    case MODE_DEC:
+      return subdec(chars, index, length);
+      break;
+    case MODE_UNICODE:
+      return subunicode(chars, index, length);
+      break;
+    case MODE_ASCII:
+      default:
+      return subascii(chars, index, length);
+      break;
+    }
+  }
+  var subascii = function(chars, index, length){
+    var html = "";
+    var char, ctrl;
+    var end = index + length;
+    for (var i = index; i < end; i += 1) {
+      char = chars[i];
+      if(char < 32 || char === 126){
+        ctrl = char.toString(16).toUpperCase();
+        if (ctrl.length % 2 !== 0) {
+          ctrl = "0" + ctrl;
         }
-        html += "x" + char;
-      } else if (mode === MODE_DEC) {
-        if (i > threshold) {
-          html += ",";
+        html += '<span class="'+CLASS_CTRL+'">\\x'+ctrl+'</span>';
+      }else if (char > 126){
+        ctrl = char.toString(16).toUpperCase();
+        if (ctrl.length % 2 !== 0) {
+          ctrl = "0" + ctrl;
         }
-        html += chars[i].toString(10);
-      } else {
-        if (chars[i] === 10) {
-          html += '<code>LF</code>';
-        } else if (chars[i] === 13) {
-          html += '<code>CR</code>';
-        } else if (chars[i] === 9) {
-          html += '<code>TAB</code>';
-        } else if (chars[i] === 32) {
+        html += '\\x'+ctrl;
+      }else{
+        switch(char){
+        case 32:
           html += '&nbsp;';
-        } else if (chars[i] === 34) {
+          break;
+        case 34:
           html += '&#34;';
-        } else if (chars[i] === 38) {
+          break;
+        case 38:
           html += '&#38;';
-        } else if (chars[i] === 39) {
+          break;
+        case 39:
           html += '&#39;';
-        } else if (chars[i] === 60) {
+          break;
+        case 60:
           html += '&#60;';
-        } else if (chars[i] === 62) {
+          break;
+        case 62:
           html += '&#62;';
-        } else if (chars[i] < 33 || chars[i] > 126) {
-          html += '<code>x' + chars[i].toString(16) + '</code>';
-        } else {
-          html += String.fromCharCode(chars[i]);
+          break;
+        default:
+        html += String.fromCharCode(char);
+          break;
         }
       }
     }
-    return html;
+  return html;
   }
+  var subhex = function(chars, index, length){
+    var html = "";
+    var char, ctrl;
+    var end = index + length;
+    for (var i = index; i < end; i += 1) {
+      char = chars[i];
+      if(char < 32 || char === 126){
+        ctrl = char.toString(16).toUpperCase();
+        if (ctrl.length % 2 !== 0) {
+          ctrl = "0" + ctrl;
+        }
+        html += '<span class="'+CLASS_CTRL+'">\\x'+ctrl+'</span>';
+      }else{
+        ctrl = char.toString(16).toUpperCase();
+        if (ctrl.length % 2 !== 0) {
+          ctrl = "0" + ctrl;
+        }
+        html += '\\x'+ctrl;
+      }
+    }
+  return html;
+  }
+  var subunicode = function(chars, index, length){
+    var html = "";
+    var char, ctrl;
+    var end = index + length;
+    for (var i = index; i < end; i += 1) {
+      char = chars[i];
+      if(char < 32 || char === 126){
+        ctrl = char.toString(16).toUpperCase();
+        if (ctrl.length % 2 !== 0) {
+          ctrl = "0" + ctrl;
+        }
+        html += '<span class="'+CLASS_CTRL+'">\\u'+ctrl+'</span>';
+      }else{
+        ctrl = char.toString(16).toUpperCase();
+        if (ctrl.length % 2 !== 0) {
+          ctrl = "0" + ctrl;
+        }
+        html += '\\u'+ctrl;
+      }
+    }
+  return html;
+  }
+  var subdec = function(chars, index, length){
+    var html = "";
+    var char, ctrl;
+    char = chars[0];
+    if(char < 32 || char === 126){
+      html += '<span class="'+CLASS_CTRL+'">'+char+'</span>';
+    }else{
+      html += char;
+    }
+    var end = index + length;
+    for (var i = index+1; i < end; i += 1) {
+      char = chars[i];
+      html += ",";
+      if(char < 32 || char === 126){
+        html += '<span class="'+CLASS_CTRL+'">'+char+'</span>';
+      }else{
+        html += char;
+      }
+    }
+  return html;
+  }
+// var subPhrase = function(mode, chars, beg, end, prefix) {
+// var html = "";
+// var char;
+// var threshold;
+// if (typeof (prefix) === "number") {
+// threshold = (prefix > 0) ? -1 : beg;
+// } else {
+// threshold = beg;
+// }
+// for (var i = beg; i < end; i += 1) {
+// if (mode === MODE_HEX) {
+// char = chars[i].toString(16).toUpperCase();
+// if (char.length % 2 !== 0) {
+// char = "0" + char;
+// }
+// html += "x" + char;
+// } else if (mode === MODE_DEC) {
+// if (i > threshold) {
+// html += ",";
+// }
+// html += chars[i].toString(10);
+// } else {
+// if (chars[i] === 10) {
+// html += '<code>LF</code>';
+// } else if (chars[i] === 13) {
+// html += '<code>CR</code>';
+// } else if (chars[i] === 9) {
+// html += '<code>TAB</code>';
+// } else if (chars[i] === 32) {
+// html += '&nbsp;';
+// } else if (chars[i] === 34) {
+// html += '&#34;';
+// } else if (chars[i] === 38) {
+// html += '&#38;';
+// } else if (chars[i] === 39) {
+// html += '&#39;';
+// } else if (chars[i] === 60) {
+// html += '&#60;';
+// } else if (chars[i] === 62) {
+// html += '&#62;';
+// } else if (chars[i] < 33 || chars[i] > 126) {
+// html += '<code>x' + chars[i].toString(16) + '</code>';
+// } else {
+// html += String.fromCharCode(chars[i]);
+// }
+// }
+// }
+// return html;
+// }
 }

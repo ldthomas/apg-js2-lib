@@ -31,8 +31,6 @@ module.exports = function() {
   var rules = null;
   var udts = null;
   var chars = null;
-  var charsFirst = 0;
-  var charsLength = 0;
   var nodeCount = 0;
   var nodesDefined = [];
   var nodeCallbacks = [];
@@ -42,7 +40,7 @@ module.exports = function() {
   this.astObject = "astObject";
   // Called by the parser to define the rule names, `UDT`s and the input string
   // for this `AST`.
-  this.init = function(rulesIn, udtsIn, charsIn, beg, len) {
+  this.init = function(rulesIn, udtsIn, charsIn) {
     stack.length = 0;
     records.length = 0;
     nodesDefined.length = 0;
@@ -50,8 +48,6 @@ module.exports = function() {
     rules = rulesIn;
     udts = udtsIn;
     chars = charsIn;
-    charsFirst = beg;
-    charsLength = len;
     var i, list = [];
     for (i = 0; i < rules.length; i += 1) {
       list.push(rules[i].lower);
@@ -185,7 +181,7 @@ module.exports = function() {
     var maxLine = 30;
     var i;
     depth += 2;
-    var end = Math.min(charsLength, beg + len);
+    var end = Math.min(chars.length, beg + len);
     xml += indent(depth);
     for (i = beg; i < end; i += 1) {
       if (i > beg) {
@@ -207,9 +203,9 @@ module.exports = function() {
     var i, j, depth = 0;
     xml += '<?xml version="1.0" encoding="utf-8"?>\n';
     xml += '<root nodes="' + records.length / 2 + '" characters="'
-        + charsLength + '">\n';
+        + chars.length + '">\n';
     xml += '<!-- input string character codes, comma-delimited UTF-32 integers -->\n';
-    xml += phrase(chars, depth, charsFirst, charsLength);
+    xml += phrase(chars, depth, 0, chars.length);
     records.forEach(function(rec, index) {
       if (rec.state === id.SEM_PRE) {
         depth += 1;
