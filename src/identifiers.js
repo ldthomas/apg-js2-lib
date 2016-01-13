@@ -51,5 +51,11 @@ module.exports = {
   ATTR_R : 41,
   ATTR_MR : 42,
   ATTR_NMR : 43,
-  ATTR_RMR : 44
+  ATTR_RMR : 44,
+  // Look around values indicate whether the parser is in look ahead or look behind mode.
+  // Used by the tracing facility to indicate the look around mode in the trace records display.
+  LOOKAROUND_NONE : 50,
+  LOOKAROUND_AHEAD : 51,
+  LOOKAROUND_BEHIND : 52
+  
 }

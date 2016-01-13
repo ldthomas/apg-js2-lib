@@ -1,4 +1,4 @@
-// This module provides a means of tracing the parser through the parse tree as it goes.
+7// This module provides a means of tracing the parser through the parse tree as it goes.
 // It is the primary debugging facility for debugging both the SABNF grammar syntax
 // and the input strings that are supposed to valid grammar sentences.
 // It is also a very informative and educational tool for understanding
@@ -56,19 +56,39 @@ module.exports = function() {
   var MODE_UNICODE = 32;
   var MAX_PHRASE = 128;
   var MAX_TLS = 5;
+  /* colors */
+  var COLOR_EMPTY = "#0fbd0f";
+  var COLOR_MATCH = "#264BFF";
+  var COLOR_LH_MATCH = "#1A97BA";
+  var COLOR_LB_MATCH = "#5F1687";
+  var COLOR_NOMATCH = "#FF4000";
+  var COLOR_LH_NOMATCH = "#FF8000";
+  var COLOR_LB_NOMATCH = "#e6ac00";
+  var COLOR_END = "#000000";
+  var COLOR_CTRL = "#000000";
+  var COLOR_REMAINDER = "#999999";
+  var COLOR_TEXT = "#000000";
+  var COLOR_BACKGROUND = "#FFFFFF";
+  var COLOR_BORDER = "#000000";
+  /* color classes */
   var CLASS_MATCH = "match";
-  var CLASS_BACKTRACK = "backtrack";
   var CLASS_EMPTY = "empty";
-  var CLASS_LOOKAHEAD = "look-ahead";
-  var CLASS_LOOKBEHIND = "look-behind";
+  var CLASS_OS_ACTIVE = "os-active";
+  var CLASS_OS_MATCH = "os-match";
+  var CLASS_OS_EMPTY = "os-empty";
+  var CLASS_OS_NOMATCH = "osnomatch";
+  var CLASS_LH_MATCH = "lh-match";
+  var CLASS_LB_MATCH = "lb-match";
   var CLASS_REMAINDER = "remainder";
   var CLASS_CTRL = "ctrl-char";
   var CLASS_END = "line-end";
+  
   var PHRASE_END_CHAR = "&bull;";
   var PHRASE_CONTINUE_CHAR = "&hellip;";
-  var PHRASE_END = '<span class="'+CLASS_END+'">&bull;</span>';
-  var PHRASE_CONTINUE = '<span class="'+CLASS_END+'">&hellip;</span>';
-  var EMPTY_CHAR = '<span class="'+CLASS_EMPTY+'">&#120634;</span>';
+  var PHRASE_END = '<span class="' + CLASS_END + '">&bull;</span>';
+  var PHRASE_CONTINUE = '<span class="' + CLASS_END + '">&hellip;</span>';
+  var PHRASE_EMPTY = '<span class="' + CLASS_EMPTY + '">&#120634;</span>';
+  var PHRASE_NOMATCH = '<span class="' + CLASS_OS_NOMATCH + '">&#120636;</span>';
   var utils = require("./utilities.js");
   var circular = new (require("./circular-buffer.js"))();
   var id = require("./identifiers.js");
@@ -89,12 +109,14 @@ module.exports = function() {
       operatorFilter[id.ALT] = set;
       operatorFilter[id.CAT] = set;
       operatorFilter[id.REP] = set;
-      operatorFilter[id.AND] = set;
-      operatorFilter[id.NOT] = set;
       operatorFilter[id.TLS] = set;
       operatorFilter[id.TBS] = set;
       operatorFilter[id.TRG] = set;
+      operatorFilter[id.AND] = set;
+      operatorFilter[id.NOT] = set;
       operatorFilter[id.BKR] = set;
+      operatorFilter[id.BKA] = set;
+      operatorFilter[id.BKN] = set;
     }
     var all, items = 0;
     for ( var name in that.filter.operators) {
@@ -143,9 +165,13 @@ module.exports = function() {
             operatorFilter[id.TRG] = true;
           } else if (upper === 'BKR') {
             operatorFilter[id.BKR] = true;
+          } else if (upper === 'BKA') {
+            operatorFilter[id.BKA] = true;
+          } else if (upper === 'BKN') {
+            operatorFilter[id.BKN] = true;
           } else {
             throw new Error(thisFileName + "initOpratorFilter: '" + name + "' not a valid operator name."
-                + " Must be <all>, <none>, alt, cat, rep, and, not, tls, tbs, bkr or trg");
+                + " Must be <all>, <none>, alt, cat, rep, tls, tbs, trg, and, not, bkr, bka or bkn");
           }
         }
       }
@@ -263,7 +289,8 @@ module.exports = function() {
     return ret;
   }
   // Collect the "down" record.
-  this.down = function(op, state, offset, length, backtrack, lookAround) {
+  this.down = function(op, state, offset, length,
+      anchor, lookAround) {
     totalRecords += 1;
     if (filter(op)) {
       lineStack.push(filteredRecords);
@@ -276,7 +303,7 @@ module.exports = function() {
         state : state,
         phraseIndex : offset,
         phraseLength : length,
-        backtrack : backtrack,
+        lookAnchor : anchor,
         lookAround : lookAround
       };
       filteredRecords += 1;
@@ -284,7 +311,8 @@ module.exports = function() {
     }
   };
   // Collect the "up" record.
-  this.up = function(op, state, offset, length, backtrack, lookAround) {
+  this.up = function(op, state, offset, length,
+      anchor, lookAround) {
     totalRecords += 1;
     if (filter(op)) {
       var thisLine = filteredRecords;
@@ -303,18 +331,18 @@ module.exports = function() {
         state : state,
         phraseIndex : offset,
         phraseLength : length,
-        backtrack : backtrack,
+        lookAnchor : anchor,
         lookAround : lookAround
       };
       filteredRecords += 1;
     }
   };
-  var htmlHeader = function(mode, caption){
+  var htmlHeader = function(mode, caption) {
     /* open the page */
     /* write the HTML5 header with table style */
     /* open the <table> tag */
     var modeName;
-    switch(mode){
+    switch (mode) {
     case MODE_HEX:
       modeName = "hexidecimal";
       break;
@@ -331,58 +359,42 @@ module.exports = function() {
       throw new Error(thisFileName + "htmlHeader: unrecognized mode: " + mode);
       break;
     }
-    /* page colors */
-    var pageTextColor = "#000000";
-    var pageBackgroundColor = "#FFFFFF";
-    var tableBorderColor = "#000000";
-    var matchColor = "#0066ff";
-// var nomatchColor = "#ff4d4d";
-// var emptyColor = "#00cc00";
-    var emptyColor = "#0fbd0f";
-// var lookAheadColor = "#00ffff";
-    var lookAheadColor = "#008b8b";
-// var lookBehindColor = "#ff33ff";
-//    var lookBehindColor = "#e600e5";
-    var lookBehindColor = "#bf00ff";
-    var backtrackColor = "#ff4d4d";
-    var lineEndColor = "#000000";
-//    var remainderColor = "#a9a9a9";
-    var remainderColor = "#999999";
-    var controlCharacterColor = "#4b0082";
     var title = "trace";
     var header = '<!DOCTYPE html>\n';
     header += '<html lang="en">\n';
     header += '<head>\n';
     header += '<meta charset="utf-8">\n';
     header += '<title>' + title + '</title>\n';
-// header += '<link rel="stylesheet" type="text/css" href="trace-table.css" media="screen" title="Sinorca (screen)" />\n';
+    // header += '<link rel="stylesheet" type="text/css" href="trace-table.css" media="screen" title="Sinorca (screen)" />\n';
     header += '<style>\n';
     header += 'body {\n';
-    header += '  color: '+pageTextColor+';\n';
-    header += '  background-color: '+pageBackgroundColor+';\n';
+    header += '  color: ' + COLOR_TEXT + ';\n';
+    header += '  background-color: ' + COLOR_BACKGROUND + ';\n';
     header += '  font-family: monospace;\n';
     header += '  font-size: .9em\n';
     header += '  margin: 0 0 10px 10px;\n';
     header += '  padding: 0;\n';
     header += '}\n';
-// header += 'h1, h2, h3, h4, h5, h6 {color: #6297bc;}\n';
     header += 'h1, h2, h3, h4, h5, h6 {margin: 5px 0 5px 0;}\n';
     header += 'table.trace-table,\n';
     header += '.trace-table th,\n';
-    header += '.trace-table td{text-align:right;border:1px solid '+tableBorderColor+';border-collapse:collapse;}\n';
+    header += '.trace-table td{text-align:right;border:1px solid ' + COLOR_BORDER + ';border-collapse:collapse;}\n';
     header += '.trace-table th:last-child{text-align:left;}\n';
     header += '.trace-table th:nth-last-child(2){text-align:left;}\n';
     header += '.trace-table td:last-child{text-align:left;}\n';
     header += '.trace-table td:nth-last-child(2){text-align:left;}\n';
     header += 'table.trace-table caption{font-weight: bold;}\n';
-    header += 'span.'+CLASS_MATCH+'{font-weight: bold; color: '+matchColor+';}\n';
-    header += 'span.'+CLASS_EMPTY+'{font-weight: bold; color: '+emptyColor+';}\n';
-    header += 'span.'+CLASS_BACKTRACK+'{font-weight: bold; color: '+backtrackColor+';}\n';
-    header += 'span.'+CLASS_LOOKAHEAD+'{font-weight: bold; color: '+lookAheadColor+';}\n';
-    header += 'span.'+CLASS_LOOKBEHIND+'{font-weight: bold; color: '+lookBehindColor+';}\n';
-    header += 'span.'+CLASS_REMAINDER+'{font-weight: bold; color: '+remainderColor+';}\n';
-    header += 'span.'+CLASS_CTRL+'{font-weight: bold; color: '+controlCharacterColor+';}\n';
-    header += 'span.'+CLASS_END+'{font-weight: bold; color: '+lineEndColor+';}\n';
+    header += 'span.' + CLASS_OS_ACTIVE + '{font-weight: bold; color: ' + COLOR_TEXT + ';}\n';
+    header += 'span.' + CLASS_OS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
+    header += 'span.' + CLASS_OS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
+    header += 'span.' + CLASS_OS_NOMATCH + '{font-weight: bold; color: ' + COLOR_NOMATCH + ';}\n';
+    header += 'span.' + CLASS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
+    header += 'span.' + CLASS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
+    header += 'span.' + CLASS_LH_MATCH + '{font-weight: bold; color: ' + COLOR_LH_MATCH + ';}\n';
+    header += 'span.' + CLASS_LB_MATCH + '{font-weight: bold; color: ' + COLOR_LB_MATCH + ';}\n';
+    header += 'span.' + CLASS_REMAINDER + '{font-weight: bold; color: ' + COLOR_REMAINDER + ';}\n';
+    header += 'span.' + CLASS_CTRL + '{font-weight: bold; color: ' + COLOR_CTRL+ ';}\n';
+    header += 'span.' + CLASS_END + '{font-weight: bold; color: ' + COLOR_END + ';}\n';
     header += '</style>\n';
     header += '</head>\n<body>\n';
     header += '<h1>JavaScript APG Trace</h1>\n';
@@ -394,7 +406,7 @@ module.exports = function() {
     }
     return header;
   }
-  var htmlFooter = function(){
+  var htmlFooter = function() {
     var footer = "";
     /* close the </table> tag */
     footer += '</table>\n';
@@ -406,21 +418,26 @@ module.exports = function() {
     footer += '(d)&nbsp;-&nbsp;phrase length<br>\n';
     footer += '(e)&nbsp;-&nbsp;relative tree depth<br>\n';
     footer += '(f)&nbsp;-&nbsp;operator state<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&darr;&nbsp;&nbsp;phrase opened<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="match">&uarr;M</span> phrase matched<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="empty">&uarr;E</span> empty phrase matched<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="nomatch">&uarr;N</span> phrase not matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_ACTIVE + '">&darr;</span>&nbsp;&nbsp;phrase opened<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_MATCH + '">&uarr;M</span> phrase matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_EMPTY + '">&uarr;E</span> empty phrase matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_NOMATCH + '">&uarr;N</span> phrase not matched<br>\n';
     footer += 'operator&nbsp;-&nbsp;ALT, CAT, REP, RNM, TRG, TLS, TBS<sup>&dagger;</sup>, UDT, AND, NOT, BKA, BKN, BKR<sup>&Dagger;</sup><br>\n';
-    footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to '+MAX_PHRASE+' characters of the phrase being matched<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_MATCH+'">matched characters</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_LOOKAHEAD+'">matched characters in look ahead mode</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_LOOKBEHIND+'">matched characters in look behind mode</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_BACKTRACK+'">backtracked characters</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_REMAINDER+'">remainder characters(not yet examined by parser)</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="'+CLASS_CTRL+'">control characters</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;'+EMPTY_CHAR+' empty string<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;'+PHRASE_END+' end of input string<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;'+PHRASE_CONTINUE+' input string truncated<br>\n';
+    footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE + ' characters of the phrase being matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_MATCH
+    + '">matched characters</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_LH_MATCH
+    + '">matched characters in look ahead mode</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_LB_MATCH
+    + '">matched characters in look behind mode</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_REMAINDER
+        + '">remainder characters(not yet examined by parser)</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_CTRL
+        + '">control characters</span><br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_EMPTY + ' empty string<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_END + ' end of input string<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_CONTINUE
+        + ' input string truncated<br>\n';
     footer += '</p>\n';
     footer += '<p>\n';
     footer += '<sup>&dagger;</sup>original ABNF operators:<br>\n';
@@ -445,11 +462,11 @@ module.exports = function() {
     footer += '</html>\n';
     return footer;
   }
-  this.toHtml = function(modearg, caption){
+  this.toHtml = function(modearg, caption) {
     /* writes the trace records as a table in a complete html page */
     var mode = MODE_ASCII;
     if (typeof (modearg) === "string" && modearg.length >= 3) {
-      var modein = modearg.toLowerCase().slice(0,3);
+      var modein = modearg.toLowerCase().slice(0, 3);
       if (modein === 'hex') {
         mode = MODE_HEX;
       } else if (modein === 'dec') {
@@ -475,7 +492,7 @@ module.exports = function() {
       return "";
     }
     var html = '';
-    var line, thisLine, thatLine, lookAhead, lookBehind;
+    var line, thisLine, thatLine, lookAhead, lookBehind, lookAround, anchor;
     html += '<tr><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th>';
     html += '<th>operator</th><th>phrase</th></tr>\n';
     circular.forEach(function(lineIndex, index) {
@@ -484,11 +501,28 @@ module.exports = function() {
       thatLine = (line.thatLine !== undefined) ? line.thatLine : '--';
       lookAhead = false;
       lookBehind = false;
-      if(line.lookAround === id.AND || line.lookAround === id.NOT){
+      lookAround = false;
+      if (line.lookAround === id.LOOKAROUND_AHEAD) {
         lookAhead = true;
+        lookAround = true;
+        anchor = line.lookAnchor;
       }
-      if(line.lookAround === id.BKA || line.lookAround === id.BKN){
+      if (line.opcode.type === id.AND ||
+          line.opcode.type === id.NOT) {
+        lookAhead = true;
+        lookAround = true;
+        anchor = line.phraseIndex;
+      }
+      if (line.lookAround === id.LOOKAROUND_BEHIND){
         lookBehind = true;
+        lookAround = true;
+        anchor = line.lookAnchor;
+      }
+      if (line.opcode.type === id.BKA ||
+          line.opcode.type === id.BKN) {
+        lookBehind = true;
+        lookAround = true;
+        anchor = line.phraseIndex;
       }
       html += '<tr>';
       html += '<td>' + thisLine + '</td><td>' + thatLine + '</td>';
@@ -498,29 +532,28 @@ module.exports = function() {
       html += '<td>';
       switch (line.state) {
       case id.ACTIVE:
-        html += '&darr;&nbsp;';
+        html += '<span class="' + CLASS_OS_ACTIVE + '">&darr;&nbsp;</span>';
         break;
       case id.MATCH:
-        html += '<span class="match">&uarr;M</span>';
+        html += '<span class="' + CLASS_OS_MATCH + '">&uarr;M</span>';
         break;
       case id.NOMATCH:
-        html += '<span class="nomatch">&uarr;N</span>';
+        html += '<span class="' + CLASS_OS_NOMATCH + '">&uarr;N</span>';
         break;
       case id.EMPTY:
-        html += '<span class="empty">&uarr;E</span>';
+        html += '<span class="' + CLASS_OS_EMPTY + '">&uarr;E</span>';
         break;
       default:
-        html += '<span class="nomatch">--</span>';
+        html += '<span class="' + CLASS_OS_ACTIVE + '">--</span>';
         break;
       }
       html += '</td>';
       html += '<td>';
       html += that.indent(line.depth);
-      if(lookAhead){
-        html += '<span class="look-ahead">';
-      }
-      if(lookBehind){
-        html += '<span class="look-behind">';
+      if (lookAhead) {
+        html += '<span class="' + CLASS_LH_MATCH + '">';
+      }else  if (lookBehind) {
+        html += '<span class="' + CLASS_LB_MATCH + '">';
       }
       html += utils.opcodeToString(line.opcode.type);
       if (line.opcode.type === id.RNM) {
@@ -545,14 +578,18 @@ module.exports = function() {
       if (line.opcode.type === id.REP) {
         html += '(' + displayRep(mode, line.opcode) + ') ';
       }
-      if(lookAhead || lookBehind){
+      if (lookAround) {
         html += '</span>';
       }
       html += '</td>';
       html += '<td>';
-//      html += displayPhrase(mode, chars, line.phraseIndex, line.phraseLength, line.state);
-//      html += subdec(chars, line.phraseIndex, chars.length - line.phraseIndex);
-      html += displayPhrase(lookAhead, lookBehind, mode, line.state, chars, line.phraseIndex, line.phraseLength, line.backtrack);
+      if (lookBehind) {
+        html += displayBehind(mode, chars, line.state, line.phraseIndex, line.phraseLength, anchor);
+      } else if(lookAhead){
+        html += displayAhead(mode, chars, line.state, line.phraseIndex, line.phraseLength);
+      }else{
+        html += displayNone(mode, chars, line.state, line.phraseIndex, line.phraseLength);
+      }
       html += '</td></tr>\n';
 
     });
@@ -567,12 +604,12 @@ module.exports = function() {
     var html = '';
     for (var i = 0; i < depth; i += 1) {
       html += '.';
-// html += '&#46;';
-// if (i % 2 === 0) {
-// html += '&nbsp;';
-// } else {
-// html += '&#46;';
-// }
+      // html += '&#46;';
+      // if (i % 2 === 0) {
+      // html += '&nbsp;';
+      // } else {
+      // html += '&#46;';
+      // }
     }
     return html;
   };
@@ -703,89 +740,98 @@ module.exports = function() {
     }
     return html;
   }
-//  var displayPhrase = function(mode, chars, offset, len, state) {
- var displayPhrase = function(ahead, behind, mode, state, chars, index, length, backtrack) {
+  var displayBehind = function(mode, chars, state, index, length, anchor) {
     var html = '';
     var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
-    var spanbeg1 = "";
-    var spanend1 = "";
-    var spanbeg2 = '<span class="'+CLASS_REMAINDER+'">'
-    var spanend2 = '</span>';
-    if(behind){
-      /* do it differently */
-      html += "TODO: look behind";
-    }else{
-      switch(state){
-      case id.ACTIVE:
-        beg1 = index;
-        len1 = 0;
-        beg2 = index;
-        len2 = chars.length - beg2;
-        break;
-      case id.EMPTY:
-        html += EMPTY_CHAR;
-        if(backtrack > 0){
-          beg1 = index;
-          len1 = backtrack;
-          spanbeg1 = '<span class="'+CLASS_BACKTRACK+'">'
-          spanend1 = '</span>';
-          beg2 = index + len1;
-          len2 = chars.length - beg2;
-        }else{
-          beg1 = index;
-          len1 = 0;
-          beg2 = index;
-          len2 = chars.length - beg2;
-        }
-        break;
-      case id.MATCH:
-        spanbeg1 = '<span class="'
-        spanbeg1 += ahead ? CLASS_LOOKAHEAD: CLASS_MATCH;
-        spanbeg1 += '">';
-        spanend1 = '</span>';
-        beg1 = index;
-        len1 = length;
-        beg2 = index + len1;
-        len2 = chars.length - beg2;
-        break;
-      case id.NOMATCH:
-        spanbeg1 = '<span class="'+CLASS_BACKTRACK+'">';
-        spanend1 = '</span>';
-        beg1 = index;
-        len1 = backtrack;
-        beg2 = index + len1;
-        len2 = chars.length - beg2;
-        break;
-      }
-      lastchar = PHRASE_END;
-      if(len1 > MAX_PHRASE){
-        len1 = MAX_PHRASE;
-        lastchar = PHRASE_CONTINUE;
-        len2 = 0;
-      }else if(len1 + len2 > MAX_PHRASE){
-        lastchar = PHRASE_CONTINUE;
-        len2 = MAX_PHRASE - len1;
-      }
+    var spanBehind = '<span class="' + CLASS_LB_MATCH + '">';
+    var spanRemainder = '<span class="' + CLASS_REMAINDER + '">'
+    var spanend = '</span>';
+    debugger;
+    switch (state) {
+    case id.EMPTY:
+      html += PHRASE_EMPTY;
+    case id.NOMATCH:
+    case id.MATCH:
+    case id.ACTIVE:
+      beg1 = index - length;
+      len1 = anchor -beg1;
       if(len1 > 0){
-        html += spanbeg1;
+        html += spanBehind;
         html += subPhrase(mode, chars, beg1, len1);
-        html += spanend1;
+        html += spanend;
       }
-      if(len2 > 0){
-        html += spanbeg2;
-        html += subPhrase(mode, chars, beg2, len2);
-        html += spanend2;
-      }
-      html += lastchar;
+      beg2 = anchor;
+      len2 = chars.length - beg2;
+      html += spanRemainder;
+      html += subPhrase(mode, chars, beg2, len2);
+      html += spanend;
+      break;
     }
-    return html;
+    lastchar = PHRASE_END;
+    if (len1 > MAX_PHRASE) {
+      len1 = MAX_PHRASE;
+      lastchar = PHRASE_CONTINUE;
+      len2 = 0;
+    } else if (len1 + len2 > MAX_PHRASE) {
+      lastchar = PHRASE_CONTINUE;
+      len2 = MAX_PHRASE - len1;
+    }
+    return html + lastchar;
+  }
+  var displayAhead = function(mode, chars, state, index, length) {
+    var spanAhead = '<span class="' + CLASS_LH_MATCH + '">';
+    return displayForward(mode, chars, state, index, length, spanAhead);
+  }
+  var displayNone = function(mode, chars, state, index, length) {
+    var spanAhead = '<span class="' + CLASS_MATCH + '">';
+    return displayForward(mode, chars, state, index, length, spanAhead);
+  }
+  var displayForward = function(mode, chars, state, index, length, spanAhead) {
+    var html = '';
+    var len1, beg2, len2;
+    var lastchar = PHRASE_END;
+    var spanRemainder = '<span class="' + CLASS_REMAINDER + '">'
+    var spanend = '</span>';
+    switch (state) {
+    case id.EMPTY:
+      html += PHRASE_EMPTY;
+    case id.NOMATCH:
+    case id.ACTIVE:
+      len1 = 0;
+      len2 = chars.length - index;
+      html += spanRemainder;
+      html += subPhrase(mode, chars, index, len2);
+      html += spanend;
+      break;
+    case id.MATCH:
+      len1 = length;
+      html += spanAhead;
+      html += subPhrase(mode, chars, index, len1);
+      html += spanend;
+      beg2 = index + len1;
+      len2 = chars.length - beg2;
+      html += spanRemainder;
+      html += subPhrase(mode, chars, beg2, len2);
+      html += spanend;
+      break;
+    }
+    lastchar = PHRASE_END;
+    if (len1 > MAX_PHRASE) {
+      len1 = MAX_PHRASE;
+      lastchar = PHRASE_CONTINUE;
+      len2 = 0;
+    } else if (len1 + len2 > MAX_PHRASE) {
+      lastchar = PHRASE_CONTINUE;
+      len2 = MAX_PHRASE - len1;
+    }
+    return html + lastchar;
   }
   var subPhrase = function(mode, chars, index, length) {
-    if(length === 0){
+    if (length === 0) {
       return "";
     }
-    switch(mode){
+    switch (mode) {
     case MODE_HEX:
       return subhex(chars, index, length);
       break;
@@ -796,31 +842,31 @@ module.exports = function() {
       return subunicode(chars, index, length);
       break;
     case MODE_ASCII:
-      default:
+    default:
       return subascii(chars, index, length);
       break;
     }
   }
-  var subascii = function(chars, index, length){
+  var subascii = function(chars, index, length) {
     var html = "";
     var char, ctrl;
     var end = index + length;
     for (var i = index; i < end; i += 1) {
       char = chars[i];
-      if(char < 32 || char === 126){
+      if (char < 32 || char === 126) {
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-        html += '<span class="'+CLASS_CTRL+'">\\x'+ctrl+'</span>';
-      }else if (char > 126){
+        html += '<span class="' + CLASS_CTRL + '">\\x' + ctrl + '</span>';
+      } else if (char > 126) {
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-        html += '\\x'+ctrl;
-      }else{
-        switch(char){
+        html += '\\x' + ctrl;
+      } else {
+        switch (char) {
         case 32:
           html += '&nbsp;';
           break;
@@ -840,125 +886,76 @@ module.exports = function() {
           html += '&#62;';
           break;
         default:
-        html += String.fromCharCode(char);
+          html += String.fromCharCode(char);
           break;
         }
       }
     }
-  return html;
+    return html;
   }
-  var subhex = function(chars, index, length){
+  var subhex = function(chars, index, length) {
     var html = "";
     var char, ctrl;
     var end = index + length;
     for (var i = index; i < end; i += 1) {
       char = chars[i];
-      if(char < 32 || char === 126){
+      if (char < 32 || char === 126) {
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-        html += '<span class="'+CLASS_CTRL+'">\\x'+ctrl+'</span>';
-      }else{
+        html += '<span class="' + CLASS_CTRL + '">\\x' + ctrl + '</span>';
+      } else {
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-        html += '\\x'+ctrl;
+        html += '\\x' + ctrl;
       }
     }
-  return html;
+    return html;
   }
-  var subunicode = function(chars, index, length){
+  var subunicode = function(chars, index, length) {
     var html = "";
     var char, ctrl;
     var end = index + length;
     for (var i = index; i < end; i += 1) {
       char = chars[i];
-      if(char < 32 || char === 126){
+      if (char < 32 || char === 126) {
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-        html += '<span class="'+CLASS_CTRL+'">\\u'+ctrl+'</span>';
-      }else{
+        html += '<span class="' + CLASS_CTRL + '">\\u' + ctrl + '</span>';
+      } else {
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-        html += '\\u'+ctrl;
+        html += '\\u' + ctrl;
       }
     }
-  return html;
+    return html;
   }
-  var subdec = function(chars, index, length){
+  var subdec = function(chars, index, length) {
     var html = "";
     var char, ctrl;
     char = chars[0];
-    if(char < 32 || char === 126){
-      html += '<span class="'+CLASS_CTRL+'">'+char+'</span>';
-    }else{
+    if (char < 32 || char === 126) {
+      html += '<span class="' + CLASS_CTRL + '">' + char + '</span>';
+    } else {
       html += char;
     }
     var end = index + length;
-    for (var i = index+1; i < end; i += 1) {
+    for (var i = index + 1; i < end; i += 1) {
       char = chars[i];
       html += ",";
-      if(char < 32 || char === 126){
-        html += '<span class="'+CLASS_CTRL+'">'+char+'</span>';
-      }else{
+      if (char < 32 || char === 126) {
+        html += '<span class="' + CLASS_CTRL + '">' + char + '</span>';
+      } else {
         html += char;
       }
     }
-  return html;
+    return html;
   }
-// var subPhrase = function(mode, chars, beg, end, prefix) {
-// var html = "";
-// var char;
-// var threshold;
-// if (typeof (prefix) === "number") {
-// threshold = (prefix > 0) ? -1 : beg;
-// } else {
-// threshold = beg;
-// }
-// for (var i = beg; i < end; i += 1) {
-// if (mode === MODE_HEX) {
-// char = chars[i].toString(16).toUpperCase();
-// if (char.length % 2 !== 0) {
-// char = "0" + char;
-// }
-// html += "x" + char;
-// } else if (mode === MODE_DEC) {
-// if (i > threshold) {
-// html += ",";
-// }
-// html += chars[i].toString(10);
-// } else {
-// if (chars[i] === 10) {
-// html += '<code>LF</code>';
-// } else if (chars[i] === 13) {
-// html += '<code>CR</code>';
-// } else if (chars[i] === 9) {
-// html += '<code>TAB</code>';
-// } else if (chars[i] === 32) {
-// html += '&nbsp;';
-// } else if (chars[i] === 34) {
-// html += '&#34;';
-// } else if (chars[i] === 38) {
-// html += '&#38;';
-// } else if (chars[i] === 39) {
-// html += '&#39;';
-// } else if (chars[i] === 60) {
-// html += '&#60;';
-// } else if (chars[i] === 62) {
-// html += '&#62;';
-// } else if (chars[i] < 33 || chars[i] > 126) {
-// html += '<code>x' + chars[i].toString(16) + '</code>';
-// } else {
-// html += String.fromCharCode(chars[i]);
-// }
-// }
-// }
-// return html;
-// }
 }
