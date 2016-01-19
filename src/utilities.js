@@ -4,14 +4,15 @@
 "use strict";
 // Formats the returned object from [`parser.parse()`](./parse.html)
 // into an HTML table.
-// return {
-// success : result.success,
-// state : result.state,
-// length : charsLength - charsFirst,
-// matched : result.phraseLength,
-// maxMatched : maxMatched - charsFirst,
-// maxTreeDepth : maxTreeDepth,
-// nodeHits : nodeHits
+//return {
+//  success : sysData.success,
+//  state : sysData.state,
+//  length : chars.length,
+//  matched : sysData.phraseLength,
+//  maxMatched : maxMatched,
+//  maxTreeDepth : maxTreeDepth,
+//  nodeHits : nodeHits
+//};
 exports.stateToHtml = function(parserState, caption, className) {
   var id = require("./identifiers.js");
   if (typeof (caption !== "string")) {
@@ -286,7 +287,7 @@ exports.opcodeToString = function(type) {
   }
   return ret;
 };
-// Generates a complete HTML page, inserting the user's HTML text on the page.
+// Generates a complete, minimal HTML5 page, inserting the user's HTML text on the page.
 // - *html* - the page text in HTML format
 // - *filename* - the name of the file to write the page to.
 // Will fail and return an error message if this file cannot be opened or
@@ -294,56 +295,66 @@ exports.opcodeToString = function(type) {
 // - *classname* - defaults to "apg-table". (I'm not sure including this as
 // parameter makes any sense, but here it is for now.)
 // - *title* - the HTML page `<title>` - defaults to filename.
-exports.htmlToPage = function(html, filename, classname, title) {
-  var fs = require("fs");
+exports.htmlToPage = function(html, title, style) {
   var thisFileName = "utilities.js: ";
-  var ret = {
-    hasErrors : false,
-    errors : []
-  };
-  if (typeof (classname) !== "string") {
-    classname = "apg-table";
+  if(typeof(html) !== "string"){
+    throw new Error(thisFileName + "htmlToPage: input HTML is not a string");
+  }
+  if (typeof (style) !== "string") {
+    style = this.styleApgTable();
   }
   if (typeof (title) !== "string") {
-    title = filename;
+    title = "htmlToPage";
   }
-  var header = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n';
-  header += '<title>' + title + '</title>\n';
-  header += '<style>\n';
-  header += 'table.'
-      + classname
-      + '{font-family:monospace;font-size:85%;font-style:normal;font-weight:normal;border:1px solid black;border-collapse:collapse;}\n\.'
-      + classname + ' caption{font-size:125%;font-weight:bold;text-align:left;}\n\.' + classname + ' th,\n\.' + classname
-      + ' td{text-align:right;border:1px solid black;border-collapse:collapse;}\n\.' + classname
-      + ' th:nth-last-child(-n+2){text-align:left;}\n\.' + classname + ' td:nth-last-child(-n+2){text-align:left;}\n\.'
-      + classname + ' b{background-color:#c2e0ff;color:#0000ff;}\n\.' + classname
-      + ' i{background-color:#CCE6CC;color:#00cc00;}\n\.' + classname
-      + ' em{color:#cc0000;font-style:italic;font-weight:bold;}\n\.' + classname + ' strong{font-weight:bold;}\n\.' + classname
-      + ' code{color:blue;font-style:italic;font-weight:bold;font-size:75%;}\n\.' + classname
-      + ' samp{background-color:#b2ffb2;color:#008000;}\n\.' + classname + ' kbd{background-color:#ffe6e6;color:#ff0000;}\n\.'
-      + classname + ' var{background-color:#ffcccc;color:#cc0000;font-weight:bold;}';
-  header += '</style>\n';
-  header += '</head>\n<body>\n';
-  header += '<p>' + new Date() + '</p>\n';
-  var footer = '</body>\n</html>\n';
-  while (true) {
-    if (filename === undefined || typeof (filename) !== "string") {
-      ret.hasErrors = true;
-      ret.errors.push(thisFileName + "htmlToPage: bad filename: not a string");
-      break;
-    }
-    try {
-      var fd = fs.openSync(filename, "w");
-      fs.writeSync(fd, header);
-      fs.writeSync(fd, html);
-      fs.writeSync(fd, footer);
-      fs.closeSync(fd);
-    } catch (e) {
-      ret.hasErrors = true;
-      ret.errors.push(thisFileName + 'htmlToPage: output file error');
-      ret.errors.push(thisFileName + e.message);
-    }
-    break;
-  }
-  return ret;
+  var page = '';
+  page += '<!DOCTYPE html>\n';
+  page += '<html lang="en">\n';
+  page += '<head>\n';
+  page += '<meta charset="utf-8">\n';
+  page += '<title>' + title + '</title>\n';
+  page += style;
+  page += html;
+  page += '</head>\n<body>\n';
+  page += '<p>' + new Date() + '</p>\n';
+  page += '</body>\n</html>\n';
+  return page;
 };
+// HTML style for the apg-table used by many `toHtml()` -type functions.
+exports.styleApgTable = function(){
+  var COLOR_MATCH = "#0000FF";
+  var COLOR_NOMATCH = "#ff0000";
+  var COLOR_EMPTY = "#00ff00";
+  var COLOR_INVALID = "#cc0000";
+  var COLOR_CTRL = "#0000FF";
+  var COLOR_CODE = "blue";
+  var COLOR_SAMP = "#008000";
+  var COLOR_VAR = "#cc0000";
+  var COLOR_BACK = "#b2ffb2";
+  var html = '<style>\n';
+  html += "table.apg-table,\n";
+  html += ".apg-table th,\n";
+  html += ".apg-table td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
+  html += ".apg-table th:last-child{text-align:left;}\n";
+  html += ".apg-table td:last-child{text-align:left;}\n";
+  html += ".apg-table b, \/*match*\/\n";
+  html += ".apg-table i, \/* empty *\/\n";
+  html += ".apg-table kbd, \/* no-match *\/\n";
+  html += ".apg-table em, \/* invalid characters *\/\n";
+  html += ".apg-table code, \/*control characters*\/\n";
+  html += ".apg-table strong, \/* bold *\/\n";
+  html += ".apg-table samp,\n";
+  html += ".apg-table var\n";
+  html += "{font-family:monospace;font-size:100%;font-style:normal;font-weight:normal;}\n";
+  html += ".apg-table caption\n";
+  html += "{font-family:monospace;font-size:125%;font-style:normal;font-weight:bold;text-align:left;}\n";
+  html += ".apg-table b{color:"+COLOR_MATCH+";}\n";
+  html += ".apg-table i{color:"+COLOR_EMPTY+";}\n";
+  html += ".apg-table kbd{color:"+COLOR_NOMATCH+";}\n";
+  html += ".apg-table em{color:"+COLOR_INVALID+";font-style:italic;font-weight:bold;}\n";
+  html += ".apg-table strong{font-weight:bold;}\n";
+  html += ".apg-table code{color:"+COLOR_CTRL+";font-style:italic;font-weight:bold;font-size:75%;}\n";
+  html += ".apg-table samp{background-color:"+COLOR_BACK+";color:"+COLOR_SAMP+";}\n";
+  html += ".apg-table var{color:"+COLOR_VAR+";font-weight:bold;}\n";
+  html += '</style>\n';
+  return html;
+}

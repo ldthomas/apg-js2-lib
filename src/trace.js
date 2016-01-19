@@ -82,7 +82,7 @@ module.exports = function() {
   var CLASS_REMAINDER = "remainder";
   var CLASS_CTRL = "ctrl-char";
   var CLASS_END = "line-end";
-  
+  /* special trace table phrases */
   var PHRASE_END_CHAR = "&bull;";
   var PHRASE_CONTINUE_CHAR = "&hellip;";
   var PHRASE_END = '<span class="' + CLASS_END + '">&bull;</span>';
@@ -337,6 +337,62 @@ module.exports = function() {
       filteredRecords += 1;
     }
   };
+  // The trace table style is available just in case it might be needed elsewhere sometime.
+  this.styleTraceTable = function(){
+    var html = "";
+    html += '<style>\n';
+    html += 'body {\n';
+    html += '  color: ' + COLOR_TEXT + ';\n';
+    html += '  background-color: ' + COLOR_BACKGROUND + ';\n';
+    html += '  font-family: monospace;\n';
+    html += '  font-size: .9em\n';
+    html += '  margin: 0 0 10px 10px;\n';
+    html += '  padding: 0;\n';
+    html += '}\n';
+    html += 'h1, h2, h3, h4, h5, h6 {margin: 5px 0 5px 0;}\n';
+    html += 'table.trace-table,\n';
+    html += '.trace-table th,\n';
+    html += '.trace-table td{text-align:right;border:1px solid ' + COLOR_BORDER + ';border-collapse:collapse;}\n';
+    html += '.trace-table th:last-child{text-align:left;}\n';
+    html += '.trace-table th:nth-last-child(2){text-align:left;}\n';
+    html += '.trace-table td:last-child{text-align:left;}\n';
+    html += '.trace-table td:nth-last-child(2){text-align:left;}\n';
+    html += 'table.trace-table caption{font-weight: bold;}\n';
+    html += 'span.' + CLASS_OS_ACTIVE + '{font-weight: bold; color: ' + COLOR_TEXT + ';}\n';
+    html += 'span.' + CLASS_OS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
+    html += 'span.' + CLASS_OS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
+    html += 'span.' + CLASS_OS_NOMATCH + '{font-weight: bold; color: ' + COLOR_NOMATCH + ';}\n';
+    html += 'span.' + CLASS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
+    html += 'span.' + CLASS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
+    html += 'span.' + CLASS_LH_MATCH + '{font-weight: bold; color: ' + COLOR_LH_MATCH + ';}\n';
+    html += 'span.' + CLASS_LB_MATCH + '{font-weight: bold; color: ' + COLOR_LB_MATCH + ';}\n';
+    html += 'span.' + CLASS_REMAINDER + '{font-weight: bold; color: ' + COLOR_REMAINDER + ';}\n';
+    html += 'span.' + CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
+    html += 'span.' + CLASS_END + '{font-weight: bold; color: ' + COLOR_END + ';}\n';
+    html += '</style>\n';
+    return html;
+  }
+  this.toHtml = function(modearg, caption) {
+    /* writes the trace records as a table in a complete html page */
+    var mode = MODE_ASCII;
+    if (typeof (modearg) === "string" && modearg.length >= 3) {
+      var modein = modearg.toLowerCase().slice(0, 3);
+      if (modein === 'hex') {
+        mode = MODE_HEX;
+      } else if (modein === 'dec') {
+        mode = MODE_DEC;
+      } else if (modein === 'uni') {
+        mode = MODE_UNICODE;
+      }
+    }
+    var html = "";
+    html += htmlHeader(mode, caption);
+    html += htmlTable(mode);
+    html += htmlFooter();
+    return html;
+  }
+
+  // From here on down, these are just helper functions for `toHtml()`.
   var htmlHeader = function(mode, caption) {
     /* open the page */
     /* write the HTML5 header with table style */
@@ -365,37 +421,7 @@ module.exports = function() {
     header += '<head>\n';
     header += '<meta charset="utf-8">\n';
     header += '<title>' + title + '</title>\n';
-    // header += '<link rel="stylesheet" type="text/css" href="trace-table.css" media="screen" title="Sinorca (screen)" />\n';
-    header += '<style>\n';
-    header += 'body {\n';
-    header += '  color: ' + COLOR_TEXT + ';\n';
-    header += '  background-color: ' + COLOR_BACKGROUND + ';\n';
-    header += '  font-family: monospace;\n';
-    header += '  font-size: .9em\n';
-    header += '  margin: 0 0 10px 10px;\n';
-    header += '  padding: 0;\n';
-    header += '}\n';
-    header += 'h1, h2, h3, h4, h5, h6 {margin: 5px 0 5px 0;}\n';
-    header += 'table.trace-table,\n';
-    header += '.trace-table th,\n';
-    header += '.trace-table td{text-align:right;border:1px solid ' + COLOR_BORDER + ';border-collapse:collapse;}\n';
-    header += '.trace-table th:last-child{text-align:left;}\n';
-    header += '.trace-table th:nth-last-child(2){text-align:left;}\n';
-    header += '.trace-table td:last-child{text-align:left;}\n';
-    header += '.trace-table td:nth-last-child(2){text-align:left;}\n';
-    header += 'table.trace-table caption{font-weight: bold;}\n';
-    header += 'span.' + CLASS_OS_ACTIVE + '{font-weight: bold; color: ' + COLOR_TEXT + ';}\n';
-    header += 'span.' + CLASS_OS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
-    header += 'span.' + CLASS_OS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
-    header += 'span.' + CLASS_OS_NOMATCH + '{font-weight: bold; color: ' + COLOR_NOMATCH + ';}\n';
-    header += 'span.' + CLASS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
-    header += 'span.' + CLASS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
-    header += 'span.' + CLASS_LH_MATCH + '{font-weight: bold; color: ' + COLOR_LH_MATCH + ';}\n';
-    header += 'span.' + CLASS_LB_MATCH + '{font-weight: bold; color: ' + COLOR_LB_MATCH + ';}\n';
-    header += 'span.' + CLASS_REMAINDER + '{font-weight: bold; color: ' + COLOR_REMAINDER + ';}\n';
-    header += 'span.' + CLASS_CTRL + '{font-weight: bold; color: ' + COLOR_CTRL+ ';}\n';
-    header += 'span.' + CLASS_END + '{font-weight: bold; color: ' + COLOR_END + ';}\n';
-    header += '</style>\n';
+    header += that.styleTraceTable();
     header += '</head>\n<body>\n';
     header += '<h1>JavaScript APG Trace</h1>\n';
     header += '<h3>&nbsp;&nbsp;&nbsp;&nbsp;display mode: ' + modeName + '</h3>\n';
@@ -433,7 +459,7 @@ module.exports = function() {
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_REMAINDER
         + '">remainder characters(not yet examined by parser)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_CTRL
-        + '">control characters</span><br>\n';
+        + '">control characters (ASCII mode only)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_EMPTY + ' empty string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_END + ' end of input string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_CONTINUE
@@ -462,32 +488,13 @@ module.exports = function() {
     footer += '</html>\n';
     return footer;
   }
-  this.toHtml = function(modearg, caption) {
-    /* writes the trace records as a table in a complete html page */
-    var mode = MODE_ASCII;
-    if (typeof (modearg) === "string" && modearg.length >= 3) {
-      var modein = modearg.toLowerCase().slice(0, 3);
-      if (modein === 'hex') {
-        mode = MODE_HEX;
-      } else if (modein === 'dec') {
-        mode = MODE_DEC;
-      } else if (modein === 'uni') {
-        mode = MODE_UNICODE;
-      }
-    }
-    var html = "";
-    html += htmlHeader(mode, caption);
-    html += toTable(mode);
-    html += htmlFooter();
-    return html;
-  }
   // Returns the filtered records, formatted as an HTML table.
   // - *caption* - optional caption for the HTML table
   // - *mode* - "hex", "dec", "ascii", display string characters as
   // hexidecimal, decimal or ascii printing characters, respectively. (default "ascii")
   // - *classname* - default is "apg-table" but maybe someday there will be a user who
   // really wants to use his/her own style sheet.
-  var toTable = function(mode) {
+  var htmlTable = function(mode) {
     if (rules === null) {
       return "";
     }
@@ -598,8 +605,6 @@ module.exports = function() {
     html += '</table>\n';
     return html;
   };
-
-  // From here on down, these are just helper functions for `displayHtml()`.
   this.indent = function(depth) {
     var html = '';
     for (var i = 0; i < depth; i += 1) {
@@ -848,24 +853,58 @@ module.exports = function() {
     }
   }
   var subascii = function(chars, index, length) {
+    var ctrlChars = [];
+    ctrlChars[0] = "NUL";
+    ctrlChars[1] = "SOH";
+    ctrlChars[2] = "STX";
+    ctrlChars[3] = "ETX";
+    ctrlChars[4] = "EOT";
+    ctrlChars[5] = "ENQ";
+    ctrlChars[6] = "ACK";
+    ctrlChars[7] = "BEL";
+    ctrlChars[8] = "BS";
+    ctrlChars[9] = "TAB";
+    ctrlChars[10] = "LF";
+    ctrlChars[11] = "VT";
+    ctrlChars[12] = "FF";
+    ctrlChars[13] = "CR";
+    ctrlChars[14] = "SO";
+    ctrlChars[15] = "SI";
+    ctrlChars[16] = "DLE";
+    ctrlChars[17] = "DC1";
+    ctrlChars[18] = "DC2";
+    ctrlChars[19] = "DC3";
+    ctrlChars[20] = "DC4";
+    ctrlChars[21] = "NAK";
+    ctrlChars[22] = "SYN";
+    ctrlChars[23] = "ETB";
+    ctrlChars[24] = "CAN";
+    ctrlChars[25] = "EM";
+    ctrlChars[26] = "SUB";
+    ctrlChars[27] = "ESC";
+    ctrlChars[28] = "FS";
+    ctrlChars[29] = "GS";
+    ctrlChars[30] = "RS";
+    ctrlChars[31] = "US";
+    ctrlChars[127] = "DEL";
     var html = "";
     var char, ctrl;
     var end = index + length;
     for (var i = index; i < end; i += 1) {
       char = chars[i];
-      if (char < 32 || char === 126) {
+      if (char < 32 || char === 127) {
+        /* control characters */
+        html += '<span class="' + CLASS_CTRL + '">' + ctrlChars[char] + '</span>';
+      } else if (char > 127) {
+        /* non-ASCII */
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-        html += '<span class="' + CLASS_CTRL + '">\\x' + ctrl + '</span>';
-      } else if (char > 126) {
-        ctrl = char.toString(16).toUpperCase();
-        if (ctrl.length % 2 !== 0) {
-          ctrl = "0" + ctrl;
-        }
-        html += '\\x' + ctrl;
+//        html += '\\x' + ctrl;
+        html += '<span class="' + CLASS_CTRL + '">' + '\\x' + ctrl + '</span>';
       } else {
+        /* printing ASCII, 32 <= char <= 126 */
         switch (char) {
         case 32:
           html += '&nbsp;';
@@ -895,66 +934,37 @@ module.exports = function() {
   }
   var subhex = function(chars, index, length) {
     var html = "";
-    var char, ctrl;
+    var char;
     var end = index + length;
     for (var i = index; i < end; i += 1) {
-      char = chars[i];
-      if (char < 32 || char === 126) {
-        ctrl = char.toString(16).toUpperCase();
-        if (ctrl.length % 2 !== 0) {
-          ctrl = "0" + ctrl;
-        }
-        html += '<span class="' + CLASS_CTRL + '">\\x' + ctrl + '</span>';
-      } else {
-        ctrl = char.toString(16).toUpperCase();
-        if (ctrl.length % 2 !== 0) {
-          ctrl = "0" + ctrl;
-        }
-        html += '\\x' + ctrl;
+      char = chars[i].toString(16).toUpperCase();
+      if (char.length % 2 !== 0) {
+        char = "0" + char;
       }
+      html += '\\x' + char;
     }
     return html;
   }
   var subunicode = function(chars, index, length) {
     var html = "";
-    var char, ctrl;
+    var char;
     var end = index + length;
     for (var i = index; i < end; i += 1) {
-      char = chars[i];
-      if (char < 32 || char === 126) {
-        ctrl = char.toString(16).toUpperCase();
-        if (ctrl.length % 2 !== 0) {
-          ctrl = "0" + ctrl;
-        }
-        html += '<span class="' + CLASS_CTRL + '">\\u' + ctrl + '</span>';
-      } else {
-        ctrl = char.toString(16).toUpperCase();
-        if (ctrl.length % 2 !== 0) {
-          ctrl = "0" + ctrl;
-        }
-        html += '\\u' + ctrl;
+      char = chars[i].toString(16).toUpperCase();
+      if (char.length % 2 !== 0) {
+        char = "0" + char;
       }
+      html += '\\u' + char;
     }
     return html;
   }
   var subdec = function(chars, index, length) {
     var html = "";
-    var char, ctrl;
-    char = chars[0];
-    if (char < 32 || char === 126) {
-      html += '<span class="' + CLASS_CTRL + '">' + char + '</span>';
-    } else {
-      html += char;
-    }
+    var char;
+    html += chars[index];
     var end = index + length;
     for (var i = index + 1; i < end; i += 1) {
-      char = chars[i];
-      html += ",";
-      if (char < 32 || char === 126) {
-        html += '<span class="' + CLASS_CTRL + '">' + char + '</span>';
-      } else {
-        html += char;
-      }
+      html += "," + chars[i];
     }
     return html;
   }

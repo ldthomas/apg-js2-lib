@@ -104,7 +104,7 @@ module.exports = function() {
       }
     });
     if (udts.length > 0) {
-      udt.forEach(function(udt) {
+      udts.forEach(function(udt) {
         if (udt.isBkr) {
           obj[udt.lower] = null;
         }
@@ -754,8 +754,8 @@ module.exports = function() {
       /* end AST */
 
       /* back reference */
-      if (udts[op.index - rules.length].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
-        sysData.backrefFrame[udts[op.index - rules.length].lower] = {
+      if (udts[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
+        sysData.backrefFrame[udts[op.index].lower] = {
           phraseIndex : phraseIndex,
           phraseLength : sysData.phraseLength
         }

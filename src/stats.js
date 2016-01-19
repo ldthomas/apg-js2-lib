@@ -17,14 +17,6 @@ module.exports = function() {
   var udtStats = [];
   this.statsObject = "statsObject";
   var nameId = 'stats';
-  /* called only by the parser to validate a stats object*/
-  this.validate = function(name) {
-    var ret = false;
-    if (typeof (name) === 'string' && nameId === name) {
-      ret = true;
-    }
-    return ret;
-  }
   // `Array.sort()` callback function for sorting `RNM` and `UDT` operators alphabetically by name.
   var sortAlpha = function(lhs, rhs) {
     if (lhs.lower < rhs.lower) {
@@ -56,91 +48,28 @@ module.exports = function() {
     }
     return 0;
   }
+  var emptyStat = function(){
+    this.empty = 0;
+    this.match = 0;
+    this.nomatch = 0;
+    this.total = 0;
+  }
   var clear = function() {
-    totals = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.ALT] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.CAT] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.RNM] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.UDT] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.REP] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.AND] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.NOT] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.TLS] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.TBS] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.TRG] = {
-      empty : 0,
-      match : 0,
-      nomatch : 0,
-      total : 0
-    };
-    stats[id.BKR] = {
-        empty : 0,
-        match : 0,
-        nomatch : 0,
-        total : 0
-      };
-    stats[id.BKA] = {
-        empty : 0,
-        match : 0,
-        nomatch : 0,
-        total : 0
-      };
-    stats[id.BKN] = {
-        empty : 0,
-        match : 0,
-        nomatch : 0,
-        total : 0
-      };
+    stats.length = 0;
+    totals = new emptyStat();
+    stats[id.ALT] = new emptyStat();
+    stats[id.CAT] = new emptyStat();
+    stats[id.REP] = new emptyStat();
+    stats[id.RNM] = new emptyStat();
+    stats[id.TRG] = new emptyStat();
+    stats[id.TBS] = new emptyStat();
+    stats[id.TLS] = new emptyStat();
+    stats[id.UDT] = new emptyStat();
+    stats[id.AND] = new emptyStat();
+    stats[id.NOT] = new emptyStat();
+    stats[id.BKR] = new emptyStat();
+    stats[id.BKA] = new emptyStat();
+    stats[id.BKN] = new emptyStat();
     ruleStats.length = 0;
     for (var i = 0; i < rules.length; i += 1) {
       ruleStats.push({
@@ -168,12 +97,6 @@ module.exports = function() {
       }
     }
   };
-  /* no verification of input - only called by parser() */
-  this.init = function(inputRules, inputUdts) {
-    rules = inputRules;
-    udts = inputUdts;
-    clear();
-  }
   /* increment the designated operator hit count by one*/
   var incStat = function(stat, state, phraseLength) {
     stat.total += 1;
@@ -192,18 +115,6 @@ module.exports = function() {
       break;
     }
   }
-  // This function is the main interaction with the parser.
-  // The parser calls it after each node has been traversed.
-  this.collect = function(op, result) {
-    incStat(totals, result.state, result.phraseLength);
-    incStat(stats[op.type], result.state, result.phraseLength);
-    if (op.type === id.RNM) {
-      incStat(ruleStats[op.index], result.state, result.phraseLength);
-    }
-    if (op.type === id.UDT) {
-      incStat(udtStats[op.index], result.state, result.phraseLength);
-    }
-  };
   /* helper for displayHtml() */
   var displayOpsOnly = function() {
     var html = '';
@@ -220,29 +131,40 @@ module.exports = function() {
     html += '<td>' + stats[id.CAT].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
+    html += '<td>REP</td><td>' + stats[id.REP].empty + '</td>';
+    html += '<td>' + stats[id.REP].match + '</td>';
+    html += '<td>' + stats[id.REP].nomatch + '</td>';
+    html += '<td>' + stats[id.REP].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
     html += '<td>RNM</td><td>' + stats[id.RNM].empty + '</td>';
     html += '<td>' + stats[id.RNM].match + '</td>';
     html += '<td>' + stats[id.RNM].nomatch + '</td>';
     html += '<td>' + stats[id.RNM].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
+    html += '<td>TBS</td><td>' + stats[id.TBS].empty + '</td>';
+    html += '<td>' + stats[id.TBS].match + '</td>';
+    html += '<td>' + stats[id.TBS].nomatch + '</td>';
+    html += '<td>' + stats[id.TBS].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
+    html += '<td>TLS</td><td>' + stats[id.TLS].empty + '</td>';
+    html += '<td>' + stats[id.TLS].match + '</td>';
+    html += '<td>' + stats[id.TLS].nomatch + '</td>';
+    html += '<td>' + stats[id.TLS].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
+    html += '<td>TRG</td><td>' + stats[id.TRG].empty + '</td>';
+    html += '<td>' + stats[id.TRG].match + '</td>';
+    html += '<td>' + stats[id.TRG].nomatch + '</td>';
+    html += '<td>' + stats[id.TRG].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
     html += '<td>UDT</td><td>' + stats[id.UDT].empty + '</td>';
     html += '<td>' + stats[id.UDT].match + '</td>';
     html += '<td>' + stats[id.UDT].nomatch + '</td>';
     html += '<td>' + stats[id.UDT].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<tr>';
-    html += '<td>BKR</td><td>' + stats[id.BKR].empty + '</td>';
-    html += '<td>' + stats[id.BKR].match + '</td>';
-    html += '<td>' + stats[id.BKR].nomatch + '</td>';
-    html += '<td>' + stats[id.BKR].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>REP</td><td>' + stats[id.REP].empty + '</td>';
-    html += '<td>' + stats[id.REP].match + '</td>';
-    html += '<td>' + stats[id.REP].nomatch + '</td>';
-    html += '<td>' + stats[id.REP].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
     html += '<td>AND</td><td>' + stats[id.AND].empty + '</td>';
@@ -257,6 +179,12 @@ module.exports = function() {
     html += '<td>' + stats[id.NOT].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
+    html += '<td>BKR</td><td>' + stats[id.BKR].empty + '</td>';
+    html += '<td>' + stats[id.BKR].match + '</td>';
+    html += '<td>' + stats[id.BKR].nomatch + '</td>';
+    html += '<td>' + stats[id.BKR].total + '</td>';
+    html += '</tr>\n';
+    html += '<tr>';
     html += '<tr>';
     html += '<td>BKA</td><td>' + stats[id.BKA].empty + '</td>';
     html += '<td>' + stats[id.BKA].match + '</td>';
@@ -264,29 +192,10 @@ module.exports = function() {
     html += '<td>' + stats[id.BKA].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
-    html += '<tr>';
     html += '<td>BKN</td><td>' + stats[id.BKN].empty + '</td>';
     html += '<td>' + stats[id.BKN].match + '</td>';
     html += '<td>' + stats[id.BKN].nomatch + '</td>';
     html += '<td>' + stats[id.BKN].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>TLS</td><td>' + stats[id.TLS].empty + '</td>';
-    html += '<td>' + stats[id.TLS].match + '</td>';
-    html += '<td>' + stats[id.TLS].nomatch + '</td>';
-    html += '<td>' + stats[id.TLS].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>TBS</td><td>' + stats[id.TBS].empty + '</td>';
-    html += '<td>' + stats[id.TBS].match + '</td>';
-    html += '<td>' + stats[id.TBS].nomatch + '</td>';
-    html += '<td>' + stats[id.TBS].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>TRG</td><td>' + stats[id.TRG].empty + '</td>';
-    html += '<td>' + stats[id.TRG].match + '</td>';
-    html += '<td>' + stats[id.TRG].nomatch + '</td>';
-    html += '<td>' + stats[id.TRG].total + '</td>';
     html += '</tr>\n';
     html += '<tr>';
     html += '<td><strong>totals</strong></td><td>' + totals.empty + '</td>';
@@ -346,6 +255,32 @@ module.exports = function() {
   var footer = function() {
     return "</table><br>\n";
   }
+  /* called only by the parser to validate a stats object*/
+  this.validate = function(name) {
+    var ret = false;
+    if (typeof (name) === 'string' && nameId === name) {
+      ret = true;
+    }
+    return ret;
+  }
+  /* no verification of input - only called by parser() */
+  this.init = function(inputRules, inputUdts) {
+    rules = inputRules;
+    udts = inputUdts;
+    clear();
+  }
+  // This function is the main interaction with the parser.
+  // The parser calls it after each node has been traversed.
+  this.collect = function(op, result) {
+    incStat(totals, result.state, result.phraseLength);
+    incStat(stats[op.type], result.state, result.phraseLength);
+    if (op.type === id.RNM) {
+      incStat(ruleStats[op.index], result.state, result.phraseLength);
+    }
+    if (op.type === id.UDT) {
+      incStat(udtStats[op.index], result.state, result.phraseLength);
+    }
+  };
   // Display the statistics as an HTML table.
   // - *type*
   //   - "ops" - (default) display only the total hit counts for all operator types.
@@ -355,7 +290,7 @@ module.exports = function() {
   // - *caption* - optional caption for the table
   // - *classname* - default is "apg-table" but maybe someday there will be a user who
   // really wants to use his/her own style sheet.
-  this.displayHtml = function(type, caption, classname) {
+  this.toHtml = function(type, caption, classname) {
     var display = displayOpsOnly;
     var html = header(caption, classname);
     while (true) {
