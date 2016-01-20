@@ -56,40 +56,8 @@ module.exports = function() {
   var MODE_UNICODE = 32;
   var MAX_PHRASE = 128;
   var MAX_TLS = 5;
-  /* colors */
-  var COLOR_EMPTY = "#0fbd0f";
-  var COLOR_MATCH = "#264BFF";
-  var COLOR_LH_MATCH = "#1A97BA";
-  var COLOR_LB_MATCH = "#5F1687";
-  var COLOR_NOMATCH = "#FF4000";
-  var COLOR_LH_NOMATCH = "#FF8000";
-  var COLOR_LB_NOMATCH = "#e6ac00";
-  var COLOR_END = "#000000";
-  var COLOR_CTRL = "#000000";
-  var COLOR_REMAINDER = "#999999";
-  var COLOR_TEXT = "#000000";
-  var COLOR_BACKGROUND = "#FFFFFF";
-  var COLOR_BORDER = "#000000";
-  /* color classes */
-  var CLASS_MATCH = "match";
-  var CLASS_EMPTY = "empty";
-  var CLASS_OS_ACTIVE = "os-active";
-  var CLASS_OS_MATCH = "os-match";
-  var CLASS_OS_EMPTY = "os-empty";
-  var CLASS_OS_NOMATCH = "osnomatch";
-  var CLASS_LH_MATCH = "lh-match";
-  var CLASS_LB_MATCH = "lb-match";
-  var CLASS_REMAINDER = "remainder";
-  var CLASS_CTRL = "ctrl-char";
-  var CLASS_END = "line-end";
-  /* special trace table phrases */
-  var PHRASE_END_CHAR = "&bull;";
-  var PHRASE_CONTINUE_CHAR = "&hellip;";
-  var PHRASE_END = '<span class="' + CLASS_END + '">&bull;</span>';
-  var PHRASE_CONTINUE = '<span class="' + CLASS_END + '">&hellip;</span>';
-  var PHRASE_EMPTY = '<span class="' + CLASS_EMPTY + '">&#120634;</span>';
-  var PHRASE_NOMATCH = '<span class="' + CLASS_OS_NOMATCH + '">&#120636;</span>';
   var utils = require("./utilities.js");
+  var style = utils.styleNames;
   var circular = new (require("./circular-buffer.js"))();
   var id = require("./identifiers.js");
   var lines = [];
@@ -103,6 +71,13 @@ module.exports = function() {
   var udts = null;
   var operatorFilter = [];
   var ruleFilter = [];
+  /* special trace table phrases */
+  var PHRASE_END_CHAR = "&bull;";
+  var PHRASE_CONTINUE_CHAR = "&hellip;";
+  var PHRASE_END = '<span class="' + style.CLASS_END + '">&bull;</span>';
+  var PHRASE_CONTINUE = '<span class="' + style.CLASS_END + '">&hellip;</span>';
+  var PHRASE_EMPTY = '<span class="' + style.CLASS_EMPTY + '">&#120634;</span>';
+  var PHRASE_NOMATCH = '<span class="' + style.CLASS_NOMATCH + '">&#120636;</span>';
   /* filter the non-RNM & non-UDT operators */
   var initOperatorFilter = function() {
     var setOperators = function(set) {
@@ -337,41 +312,6 @@ module.exports = function() {
       filteredRecords += 1;
     }
   };
-  // The trace table style is available just in case it might be needed elsewhere sometime.
-  this.styleTraceTable = function(){
-    var html = "";
-    html += '<style>\n';
-    html += 'body {\n';
-    html += '  color: ' + COLOR_TEXT + ';\n';
-    html += '  background-color: ' + COLOR_BACKGROUND + ';\n';
-    html += '  font-family: monospace;\n';
-    html += '  font-size: .9em\n';
-    html += '  margin: 0 0 10px 10px;\n';
-    html += '  padding: 0;\n';
-    html += '}\n';
-    html += 'h1, h2, h3, h4, h5, h6 {margin: 5px 0 5px 0;}\n';
-    html += 'table.trace-table,\n';
-    html += '.trace-table th,\n';
-    html += '.trace-table td{text-align:right;border:1px solid ' + COLOR_BORDER + ';border-collapse:collapse;}\n';
-    html += '.trace-table th:last-child{text-align:left;}\n';
-    html += '.trace-table th:nth-last-child(2){text-align:left;}\n';
-    html += '.trace-table td:last-child{text-align:left;}\n';
-    html += '.trace-table td:nth-last-child(2){text-align:left;}\n';
-    html += 'table.trace-table caption{font-weight: bold;}\n';
-    html += 'span.' + CLASS_OS_ACTIVE + '{font-weight: bold; color: ' + COLOR_TEXT + ';}\n';
-    html += 'span.' + CLASS_OS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
-    html += 'span.' + CLASS_OS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
-    html += 'span.' + CLASS_OS_NOMATCH + '{font-weight: bold; color: ' + COLOR_NOMATCH + ';}\n';
-    html += 'span.' + CLASS_MATCH + '{font-weight: bold; color: ' + COLOR_MATCH + ';}\n';
-    html += 'span.' + CLASS_EMPTY + '{font-weight: bold; color: ' + COLOR_EMPTY + ';}\n';
-    html += 'span.' + CLASS_LH_MATCH + '{font-weight: bold; color: ' + COLOR_LH_MATCH + ';}\n';
-    html += 'span.' + CLASS_LB_MATCH + '{font-weight: bold; color: ' + COLOR_LB_MATCH + ';}\n';
-    html += 'span.' + CLASS_REMAINDER + '{font-weight: bold; color: ' + COLOR_REMAINDER + ';}\n';
-    html += 'span.' + CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
-    html += 'span.' + CLASS_END + '{font-weight: bold; color: ' + COLOR_END + ';}\n';
-    html += '</style>\n';
-    return html;
-  }
   this.toHtml = function(modearg, caption) {
     /* writes the trace records as a table in a complete html page */
     var mode = MODE_ASCII;
@@ -390,6 +330,9 @@ module.exports = function() {
     html += htmlTable(mode);
     html += htmlFooter();
     return html;
+  }
+  this.toHtmlPage = function(mode, caption, title){
+    return utils.htmlToPage(this.toHtml(mode, caption), title);
   }
 
   // From here on down, these are just helper functions for `toHtml()`.
@@ -416,17 +359,11 @@ module.exports = function() {
       break;
     }
     var title = "trace";
-    var header = '<!DOCTYPE html>\n';
-    header += '<html lang="en">\n';
-    header += '<head>\n';
-    header += '<meta charset="utf-8">\n';
-    header += '<title>' + title + '</title>\n';
-    header += that.styleTraceTable();
-    header += '</head>\n<body>\n';
+    var header = '';
     header += '<h1>JavaScript APG Trace</h1>\n';
     header += '<h3>&nbsp;&nbsp;&nbsp;&nbsp;display mode: ' + modeName + '</h3>\n';
     header += '<h5>&nbsp;&nbsp;&nbsp;&nbsp;' + new Date() + '</h5>\n';
-    header += '<table class="trace-table">\n';
+    header += '<table class="'+style.CLASS_LEFT2TABLE+'">\n';
     if (typeof (caption) === "string") {
       header += '<caption>' + caption + '</caption>';
     }
@@ -444,21 +381,21 @@ module.exports = function() {
     footer += '(d)&nbsp;-&nbsp;phrase length<br>\n';
     footer += '(e)&nbsp;-&nbsp;relative tree depth<br>\n';
     footer += '(f)&nbsp;-&nbsp;operator state<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_ACTIVE + '">&darr;</span>&nbsp;&nbsp;phrase opened<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_MATCH + '">&uarr;M</span> phrase matched<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_EMPTY + '">&uarr;E</span> empty phrase matched<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_OS_NOMATCH + '">&uarr;N</span> phrase not matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_ACTIVE + '">&darr;</span>&nbsp;&nbsp;phrase opened<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH + '">&uarr;M</span> phrase matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_EMPTY + '">&uarr;E</span> empty phrase matched<br>\n';
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_NOMATCH + '">&uarr;N</span> phrase not matched<br>\n';
     footer += 'operator&nbsp;-&nbsp;ALT, CAT, REP, RNM, TRG, TLS, TBS<sup>&dagger;</sup>, UDT, AND, NOT, BKA, BKN, BKR<sup>&Dagger;</sup><br>\n';
     footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE + ' characters of the phrase being matched<br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH
     + '">matched characters</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_LH_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LH_MATCH
     + '">matched characters in look ahead mode</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_LB_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LB_MATCH
     + '">matched characters in look behind mode</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_REMAINDER
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_REMAINDER
         + '">remainder characters(not yet examined by parser)</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + CLASS_CTRL
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRL
         + '">control characters (ASCII mode only)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_EMPTY + ' empty string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_END + ' end of input string<br>\n';
@@ -539,28 +476,28 @@ module.exports = function() {
       html += '<td>';
       switch (line.state) {
       case id.ACTIVE:
-        html += '<span class="' + CLASS_OS_ACTIVE + '">&darr;&nbsp;</span>';
+        html += '<span class="' + style.CLASS_ACTIVE + '">&darr;&nbsp;</span>';
         break;
       case id.MATCH:
-        html += '<span class="' + CLASS_OS_MATCH + '">&uarr;M</span>';
+        html += '<span class="' + style.CLASS_MATCH + '">&uarr;M</span>';
         break;
       case id.NOMATCH:
-        html += '<span class="' + CLASS_OS_NOMATCH + '">&uarr;N</span>';
+        html += '<span class="' + style.CLASS_NOMATCH + '">&uarr;N</span>';
         break;
       case id.EMPTY:
-        html += '<span class="' + CLASS_OS_EMPTY + '">&uarr;E</span>';
+        html += '<span class="' + style.CLASS_EMPTY + '">&uarr;E</span>';
         break;
       default:
-        html += '<span class="' + CLASS_OS_ACTIVE + '">--</span>';
+        html += '<span class="' + style.CLASS_ACTIVE + '">--</span>';
         break;
       }
       html += '</td>';
       html += '<td>';
       html += that.indent(line.depth);
       if (lookAhead) {
-        html += '<span class="' + CLASS_LH_MATCH + '">';
+        html += '<span class="' + style.CLASS_LH_MATCH + '">';
       }else  if (lookBehind) {
-        html += '<span class="' + CLASS_LB_MATCH + '">';
+        html += '<span class="' + style.CLASS_LB_MATCH + '">';
       }
       html += utils.opcodeToString(line.opcode.type);
       if (line.opcode.type === id.RNM) {
@@ -749,10 +686,10 @@ module.exports = function() {
     var html = '';
     var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
-    var spanBehind = '<span class="' + CLASS_LB_MATCH + '">';
-    var spanRemainder = '<span class="' + CLASS_REMAINDER + '">'
+    var spanBehind = '<span class="' + style.CLASS_LB_MATCH + '">';
+    var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
     var spanend = '</span>';
-    debugger;
+    var prev = false;
     switch (state) {
     case id.EMPTY:
       html += PHRASE_EMPTY;
@@ -765,11 +702,12 @@ module.exports = function() {
         html += spanBehind;
         html += subPhrase(mode, chars, beg1, len1);
         html += spanend;
+        prev = true;
       }
       beg2 = anchor;
       len2 = chars.length - beg2;
       html += spanRemainder;
-      html += subPhrase(mode, chars, beg2, len2);
+      html += subPhrase(mode, chars, beg2, len2, prev);
       html += spanend;
       break;
     }
@@ -785,18 +723,18 @@ module.exports = function() {
     return html + lastchar;
   }
   var displayAhead = function(mode, chars, state, index, length) {
-    var spanAhead = '<span class="' + CLASS_LH_MATCH + '">';
+    var spanAhead = '<span class="' + style.CLASS_LH_MATCH + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
   }
   var displayNone = function(mode, chars, state, index, length) {
-    var spanAhead = '<span class="' + CLASS_MATCH + '">';
+    var spanAhead = '<span class="' + style.CLASS_MATCH + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
   }
   var displayForward = function(mode, chars, state, index, length, spanAhead) {
     var html = '';
     var len1, beg2, len2;
     var lastchar = PHRASE_END;
-    var spanRemainder = '<span class="' + CLASS_REMAINDER + '">'
+    var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
     var spanend = '</span>';
     switch (state) {
     case id.EMPTY:
@@ -817,7 +755,7 @@ module.exports = function() {
       beg2 = index + len1;
       len2 = chars.length - beg2;
       html += spanRemainder;
-      html += subPhrase(mode, chars, beg2, len2);
+      html += subPhrase(mode, chars, beg2, len2, true);
       html += spanend;
       break;
     }
@@ -832,7 +770,7 @@ module.exports = function() {
     }
     return html + lastchar;
   }
-  var subPhrase = function(mode, chars, index, length) {
+  var subPhrase = function(mode, chars, index, length, prev) {
     if (length === 0) {
       return "";
     }
@@ -841,7 +779,7 @@ module.exports = function() {
       return subhex(chars, index, length);
       break;
     case MODE_DEC:
-      return subdec(chars, index, length);
+      return subdec(chars, index, length, prev);
       break;
     case MODE_UNICODE:
       return subunicode(chars, index, length);
@@ -894,15 +832,14 @@ module.exports = function() {
       char = chars[i];
       if (char < 32 || char === 127) {
         /* control characters */
-        html += '<span class="' + CLASS_CTRL + '">' + ctrlChars[char] + '</span>';
+        html += '<span class="' + style.CLASS_CTRL + '">' + ctrlChars[char] + '</span>';
       } else if (char > 127) {
         /* non-ASCII */
         ctrl = char.toString(16).toUpperCase();
         if (ctrl.length % 2 !== 0) {
           ctrl = "0" + ctrl;
         }
-//        html += '\\x' + ctrl;
-        html += '<span class="' + CLASS_CTRL + '">' + '\\x' + ctrl + '</span>';
+        html += '<span class="' + style.CLASS_CTRL + '">' + '\\x' + ctrl + '</span>';
       } else {
         /* printing ASCII, 32 <= char <= 126 */
         switch (char) {
@@ -958,13 +895,19 @@ module.exports = function() {
     }
     return html;
   }
-  var subdec = function(chars, index, length) {
+  var subdec = function(chars, index, length, prev) {
     var html = "";
     var char;
-    html += chars[index];
     var end = index + length;
-    for (var i = index + 1; i < end; i += 1) {
-      html += "," + chars[i];
+    if(prev === true){
+      for (var i = index; i < end; i += 1) {
+        html += "," + chars[i];
+      }
+    }else{
+      html += chars[index];
+      for (var i = index + 1; i < end; i += 1) {
+        html += "," + chars[i];
+      }
     }
     return html;
   }

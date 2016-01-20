@@ -21,6 +21,7 @@ module.exports = function() {
   var startRule = 0;
   var opcodes = null;
   var chars = null;
+  var charsBegin, charsLength, charsEnd;
   var lookAround;
   var treeDepth = 0;
   var maxTreeDepth = 0;
@@ -44,7 +45,7 @@ module.exports = function() {
     if (ruleIndex >= rules.length) {
       throw new Error(functionsName + "rule index: " + ruleIndex + " out of range");
     }
-    if ((phraseIndex >= chars.length)) {
+    if ((phraseIndex >= charsEnd)) {
       throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
@@ -65,7 +66,7 @@ module.exports = function() {
     if (udtIndex >= udts.length) {
       throw new Error(functionsName + "udt index: " + udtIndex + " out of range");
     }
-    if ((phraseIndex >= chars.length)) {
+    if ((phraseIndex >= charsEnd)) {
       throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
@@ -91,6 +92,9 @@ module.exports = function() {
     rules = null;
     udts = null;
     chars = null;
+    charsBegin = 0;
+    charsLength = 0;
+    charsEnd = 0;
     ruleCallbacks = null;
     udtCallbacks = null;
     syntaxData = null;
@@ -248,7 +252,7 @@ module.exports = function() {
     if (typeof (input) === "string") {
       input = utils.stringToChars(input);
     } else if (!Array.isArray(input)) {
-      throw new Error(functionName + "input string is not an array");
+      throw new Error(functionName + "input string is not a string or array");
     }
     if (input.length > 0) {
       if (typeof (input[0]) !== "number") {
@@ -272,7 +276,10 @@ module.exports = function() {
         throw new Error(functionName + "input length out of range: " + len);
       }
     }
-    chars = input.slice(beg, beg + len);
+    chars = input;
+    charsBegin = beg;
+    charsLength = len;
+    charsEnd = charsBegin + charsLength;
   }
   /* called by `parse()` to initialize the user-written, syntax callback functions, if any */
   var initializeCallbacks = function() {
@@ -430,7 +437,7 @@ module.exports = function() {
       index : startRule
     } ];
     /* execute the start rule */
-    opExecute(0, 0, sysData);
+    opExecute(0, charsBegin, sysData);
     opcodes = null;
     /* test and return the sysData */
     switch (sysData.state) {
@@ -442,7 +449,7 @@ module.exports = function() {
       break;
     case id.EMPTY:
     case id.MATCH:
-      if (sysData.phraseLength === chars.length) {
+      if (sysData.phraseLength === charsLength) {
         sysData.success = true;
       } else {
         sysData.success = false;
@@ -452,11 +459,15 @@ module.exports = function() {
     return {
       success : sysData.success,
       state : sysData.state,
-      length : chars.length,
+      length : charsLength,
       matched : sysData.phraseLength,
       maxMatched : maxMatched,
       maxTreeDepth : maxTreeDepth,
-      nodeHits : nodeHits
+      nodeHits : nodeHits,
+      inputLength : chars.length,
+      subBegin : charsBegin,
+      subEnd : charsEnd,
+      subLength : charsLength
     };
   };
 
@@ -521,7 +532,7 @@ module.exports = function() {
       astLength = that.ast.getLength();
     }
     while (true) {
-      if (repCharIndex >= chars.length) {
+      if (repCharIndex >= charsEnd) {
         /* exit on end of input string */
         break;
       }
@@ -634,7 +645,7 @@ module.exports = function() {
       opcodes = savedOpcodes;
     } else {
       /* begin callback */
-      var charsLeft = chars.length - phraseIndex;
+      var charsLeft = charsEnd - phraseIndex;
       callback(sysData, chars, phraseIndex, syntaxData);
       validateRnmCallbackResult(rule, sysData, charsLeft, true);
       /* begin callback */
@@ -737,7 +748,7 @@ module.exports = function() {
     }
 
     /* UDT */
-    var charsLeft = chars.length - phraseIndex;
+    var charsLeft = charsEnd - phraseIndex;
     udtCallbacks[op.index](sysData, chars, phraseIndex, syntaxData);
     validateUdtCallbackResult(udts[op.index], sysData, charsLeft);
     /* UDT */
@@ -825,7 +836,7 @@ module.exports = function() {
   var opTRG = function(opIndex, phraseIndex, sysData) {
     var op = opcodes[opIndex];
     sysData.state = id.NOMATCH;
-    if (phraseIndex < chars.length) {
+    if (phraseIndex < charsEnd) {
       if (op.min <= chars[phraseIndex] && chars[phraseIndex] <= op.max) {
         sysData.state = id.MATCH;
         sysData.phraseLength = 1;
@@ -845,7 +856,7 @@ module.exports = function() {
     op = opcodes[opIndex];
     len = op.string.length;
     sysData.state = id.NOMATCH;
-    if ((phraseIndex + len) <= chars.length) {
+    if ((phraseIndex + len) <= charsEnd) {
       for (i = 0; i < len; i += 1) {
         if (chars[phraseIndex + i] !== op.string[i]) {
           /* NOMATCH */
@@ -873,7 +884,7 @@ module.exports = function() {
       sysData.state = id.EMPTY;
       return;
     }
-    if ((phraseIndex + len) <= chars.length) {
+    if ((phraseIndex + len) <= charsEnd) {
       for (i = 0; i < len; i += 1) {
         code = chars[phraseIndex + i];
         if (code >= 65 && code <= 90) {
@@ -911,7 +922,7 @@ module.exports = function() {
       sysData.state = id.EMPTY;
       return;
     }
-    if ((phraseIndex + len) <= chars.length) {
+    if ((phraseIndex + len) <= charsEnd) {
       if (op.insensitive) {
         /* case-insensitive match */
         for (i = 0; i < len; i += 1) {

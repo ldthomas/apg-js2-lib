@@ -2,39 +2,165 @@
 // [`apg`](https://github.com/ldthomas/apg-js2), [`apg-lib`](https://github.com/ldthomas/apg-js2-lib)
 // and the generated parser applications.
 "use strict";
+// Standard set of colors and classes for HTML display of results.
+exports.styleNames = {
+  /* colors */
+  COLOR_ACTIVE : "#000000",
+  COLOR_MATCH : "#264BFF",
+  COLOR_EMPTY : "#0fbd0f",
+  COLOR_NOMATCH : "#FF4000",
+  COLOR_LH_MATCH : "#1A97BA",
+  COLOR_LB_MATCH : "#5F1687",
+  COLOR_LH_NOMATCH : "#FF8000",
+  COLOR_LB_NOMATCH : "#e6ac00",
+  COLOR_END : "#000000",
+  COLOR_CTRL : "#000000",
+  COLOR_REMAINDER : "#999999",
+  COLOR_TEXT : "#000000",
+  COLOR_BACKGROUND : "#FFFFFF",
+  COLOR_BORDER : "#000000",
+  /* color classes */
+  CLASS_ACTIVE : "active",
+  CLASS_MATCH : "match",
+  CLASS_NOMATCH : "nomatch",
+  CLASS_EMPTY : "empty",
+  CLASS_LH_MATCH : "lh-match",
+  CLASS_LB_MATCH : "lb-match",
+  CLASS_REMAINDER : "remainder",
+  CLASS_CTRL : "ctrl-char",
+  CLASS_END : "line-end",
+  /* table classes */
+  CLASS_LEFT0TABLE : "left-0-table",
+  CLASS_LEFT1TABLE : "left-1-table",
+  CLASS_LEFT2TABLE : "left-2-table"
+}
+exports.styleClasses = function(){
+  var style = exports.styleNames;
+  var html = '<style>\n';
+  html += '.' + style.CLASS_ACTIVE + '{font-weight: bold; color: ' + style.COLOR_TEXT + ';}\n';
+  html += '.' + style.CLASS_MATCH + '{font-weight: bold; color: ' + style.COLOR_MATCH + ';}\n';
+  html += '.' + style.CLASS_EMPTY + '{font-weight: bold; color: ' + style.COLOR_EMPTY + ';}\n';
+  html += '.' + style.CLASS_NOMATCH + '{font-weight: bold; color: ' + style.COLOR_NOMATCH + ';}\n';
+  html += '.' + style.CLASS_LH_MATCH + '{font-weight: bold; color: ' + style.COLOR_LH_MATCH + ';}\n';
+  html += '.' + style.CLASS_LB_MATCH + '{font-weight: bold; color: ' + style.COLOR_LB_MATCH + ';}\n';
+  html += '.' + style.CLASS_REMAINDER + '{font-weight: bold; color: ' + style.COLOR_REMAINDER + ';}\n';
+  html += '.' + style.CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
+  html += '.' + style.CLASS_END + '{font-weight: bold; color: ' + style.COLOR_END + ';}\n';
+  html += '</style>\n';
+  return html;
+}
+// Table style for all columns right aligned (0 left-aligned cols)
+exports.styleLeft0Table = function(){
+  var style = exports.styleNames;
+  var html = '<style>\n';
+  html += "." + style.CLASS_LEFT0TABLE +"\n";
+  html += "." + style.CLASS_LEFT0TABLE +" th,\n";
+  html += "." + style.CLASS_LEFT0TABLE +" td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
+  html += "." + style.CLASS_LEFT0TABLE +" caption\n";
+  html += "{font-family:monospace;font-size:125%;font-style:normal;font-weight:bold;text-align:left;}\n";
+  html += '</style>\n';
+  return html;
+}
+//Table style for all but last columns right aligned (1 left-aligned col)
+exports.styleLeft1Table = function(){
+  var style = exports.styleNames;
+  var html = '<style>\n';
+  html += "." + style.CLASS_LEFT1TABLE +",\n";
+  html += "." + style.CLASS_LEFT1TABLE +" th,\n";
+  html += "." + style.CLASS_LEFT1TABLE +" td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
+  html += "." + style.CLASS_LEFT1TABLE +" th:last-child{text-align:left;}\n";
+  html += "." + style.CLASS_LEFT1TABLE +" td:last-child{text-align:left;}\n";
+  html += "." + style.CLASS_LEFT1TABLE +" caption\n";
+  html += "{font-family:monospace;font-size:125%;font-style:normal;font-weight:bold;text-align:left;}\n";
+  html += '</style>\n';
+  return html;
+}
+//Table style for all but last 2 columns right aligned (2 left-aligned cols)
+exports.styleLeft2Table = function(){
+  var style = exports.styleNames;
+  var html = '<style>\n';
+  html += "." + style.CLASS_LEFT2TABLE +",\n";
+  html += "." + style.CLASS_LEFT2TABLE +" th,\n";
+  html += "." + style.CLASS_LEFT2TABLE +" td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
+  html += '.' + style.CLASS_LEFT2TABLE +' th:last-child{text-align:left;}\n';
+  html += '.' + style.CLASS_LEFT2TABLE +' th:nth-last-child(2){text-align:left;}\n';
+  html += '.' + style.CLASS_LEFT2TABLE +' td:last-child{text-align:left;}\n';
+  html += '.' + style.CLASS_LEFT2TABLE +' td:nth-last-child(2){text-align:left;}\n';
+  html += "." + style.CLASS_LEFT2TABLE +" caption\n";
+  html += "{font-family:monospace;font-size:125%;font-style:normal;font-weight:bold;text-align:left;}\n";
+  html += '</style>\n';
+  return html;
+}
+//Generates a complete, minimal HTML5 page, inserting the user's HTML text on the page.
+//- *html* - the page text in HTML format
+//- *filename* - the name of the file to write the page to.
+//Will fail and return an error message if this file cannot be opened or
+//created.
+//- *classname* - defaults to "apg-table". (I'm not sure including this as
+//parameter makes any sense, but here it is for now.)
+//- *title* - the HTML page `<title>` - defaults to filename.
+exports.htmlToPage = function(html, title) {
+var thisFileName = "utilities.js: ";
+if(typeof(html) !== "string"){
+ throw new Error(thisFileName + "htmlToPage: input HTML is not a string");
+}
+if (typeof (title) !== "string") {
+ title = "htmlToPage";
+}
+var page = '';
+page += '<!DOCTYPE html>\n';
+page += '<html lang="en">\n';
+page += '<head>\n';
+page += '<meta charset="utf-8">\n';
+page += '<title>' + title + '</title>\n';
+page += exports.styleClasses();
+page += exports.styleLeft0Table();
+page += exports.styleLeft1Table();
+page += exports.styleLeft2Table();
+page += '</head>\n<body>\n';
+page += '<p>' + new Date() + '</p>\n';
+page += html;
+page += '</body>\n</html>\n';
+return page;
+};
 // Formats the returned object from [`parser.parse()`](./parse.html)
 // into an HTML table.
 //return {
 //  success : sysData.success,
 //  state : sysData.state,
-//  length : chars.length,
+//  length : charsLength,
 //  matched : sysData.phraseLength,
 //  maxMatched : maxMatched,
 //  maxTreeDepth : maxTreeDepth,
-//  nodeHits : nodeHits
+//  nodeHits : nodeHits,
+//  inputLength : chars.length,
+//  subBegin : charsBegin,
+//  subEnd : charsEnd,
+//  subLength : charsLength
 //};
-exports.stateToHtml = function(parserState, caption, className) {
+exports.parserResultToHtml = function(result, caption, className) {
   var id = require("./identifiers.js");
+  var style = exports.styleNames;
   if (typeof (caption !== "string")) {
     caption = "Parser State";
   }
   if (typeof (className !== "string")) {
-    className = "apg-table";
+    className = "left-1-table";
   }
   var success, state;
-  if (parserState.success === true) {
-    success = "<b>true</b>";
+  if (result.success === true) {
+    success = '<span class="'+style.CLASS_MATCH+'">true</span>';
   } else {
-    success = "<kbd>false</kbd>";
+    success = '<span class="'+style.CLASS_noMATCH+'">FALSE</span>';
   }
-  if (parserState.state === id.EMPTY) {
-    state = "<i>EMPTY</i>";
-  } else if (parserState.state === id.MATCH) {
-    state = "<b>MATCH</b>";
-  } else if (parserState.state === id.NOMATCH) {
-    state = "<kbd>NOMATCH</kbd>";
+  if (result.state === id.EMPTY) {
+    state = '<span class="'+style.CLASS_EMPTY+'">EMPTY</span>';
+  } else if (result.state === id.MATCH) {
+    state = '<span class="'+style.CLASS_MATCH+'">MATCH</span>';
+  } else if (result.state === id.NOMATCH) {
+    state = '<span class="'+style.CLASS_NOMATCH+'">NOMATCH</span>';
   } else {
-    state = "<kbd>unrecognized</kbd>";
+    state = '<span class="'+style.CLASS_NOMATCH+'">unrecognized</span>';
   }
   var html = '';
   html += '<p><table class="' + className + '">\n';
@@ -42,16 +168,27 @@ exports.stateToHtml = function(parserState, caption, className) {
   html += '<tr><th>state item</th><th>value</th><th>description</th></tr>\n';
   html += '<tr><td>parser success</td><td>' + success + '</td><td>true if the parse succeeded, false otherwise'
       + '<br>NOTE: for success, entire string must be matched</th></tr>\n';
-  html += '<tr><td>parser state</td><td>' + state + '</td><td>EMPTY, MATCH or NOMATCH</td></tr>\n';
-  html += '<tr><td>string length</td><td>' + parserState.length + '</td><td>length of the input string</td></tr>\n';
-  html += '<tr><td>matched length</td><td>' + parserState.matched
+  html += '<tr><td>parser state</td><td>' + state + '</td>\n';
+  html += '<td><span class="'+style.CLASS_EMPTY+'">EMPTY</span>, ';
+  html += '<span class="'+style.CLASS_MATCH+'">MATCH</span> or \n';
+  html += '<span class="'+style.CLASS_NOMATCH+'">NOMATCH</span></td></tr>\n';
+  html += '<tr><td>length</td><td>' + result.length + '</td><td>length of the input (sub)string</td></tr>\n';
+  html += '<tr><td>matched length</td><td>' + result.matched
       + '</td><td>number of input string characters matched</td></tr>\n';
-  html += '<tr><td>max matched</td><td>' + parserState.maxMatched
+  html += '<tr><td>max matched</td><td>' + result.maxMatched
       + '</td><td>maximum number of input string characters matched</td></tr>\n';
-  html += '<tr><td>max tree depth</td><td>' + parserState.maxTreeDepth
+  html += '<tr><td>max tree depth</td><td>' + result.maxTreeDepth
       + '</td><td>maximum depth of the parse tree reached</td></tr>\n';
-  html += '<tr><td>node hits</td><td>' + parserState.nodeHits
+  html += '<tr><td>node hits</td><td>' + result.nodeHits
       + '</td><td>number of parse tree node hits (opcode function calls)</td></tr>\n';
+  html += '<tr><td>input length</td><td>' + result.inputLength
+  + '</td><td>length of full input string</td></tr>\n';
+  html += '<tr><td>sub-string begin</td><td>' + result.subBegin
+  + '</td><td>sub-string first character index</td></tr>\n';
+  html += '<tr><td>sub-string end</td><td>' + result.subEnd
+  + '</td><td>sub-string end-of-string index</td></tr>\n';
+  html += '<tr><td>sub-string length</td><td>' + result.subLength
+  + '</td><td>sub-string length</td></tr>\n';
   html += '</table></p>\n';
   return html;
 }
@@ -163,7 +300,8 @@ exports.charsToHtml = function(chars, beg, end) {
 // error objects into an HTML table.
 // It's here because it was used by more than one object at one time. I think
 // only `apg` uses it now.
-exports.errorsToHtml = function(chars, lines, errors, title, className) {
+exports.errorsToHtml = function(chars, lines, errors, title) {
+  var style = exports.styleNames;
   var html = "";
   var that = this;
   if (!(Array.isArray(chars) && Array.isArray(lines) && Array.isArray(errors))) {
@@ -172,16 +310,15 @@ exports.errorsToHtml = function(chars, lines, errors, title, className) {
   if (typeof (title) !== "string") {
     title = "&nbsp;";
   }
-  if (typeof (className !== "string")) {
-    className = "apg-table";
-  }
+  var className = "left-1-table";
+  var errorArrow = '<span class="'+style.CLASS_NOMATCH+'">&raquo;</span>';
   html += '<p><table class="' + className + '">\n';
   html += '<caption>' + title + '</caption>\n';
   html += '<tr><th>line<br>no.</th><th>first<br>char</th><th><br>text</th></tr>\n';
   errors.forEach(function(val) {
     var line, relchar, beg, end, length, text, prefix = "", suffix = "";
     if (lines.length === 0) {
-      text = "<var>&raquo;</var>";
+      text = errorArrow;
       relchar = 0;
     } else {
       line = lines[val.line];
@@ -195,7 +332,7 @@ exports.errorsToHtml = function(chars, lines, errors, title, className) {
       if (end > beg) {
         suffix = that.charsToHtml(chars, beg, end);
       }
-      text = prefix + "<var>&raquo;</var>" + suffix;
+      text = prefix + errorArrow + suffix;
       relchar = val.char - line.beginChar;
     }
     html += '<tr>';
@@ -287,74 +424,3 @@ exports.opcodeToString = function(type) {
   }
   return ret;
 };
-// Generates a complete, minimal HTML5 page, inserting the user's HTML text on the page.
-// - *html* - the page text in HTML format
-// - *filename* - the name of the file to write the page to.
-// Will fail and return an error message if this file cannot be opened or
-// created.
-// - *classname* - defaults to "apg-table". (I'm not sure including this as
-// parameter makes any sense, but here it is for now.)
-// - *title* - the HTML page `<title>` - defaults to filename.
-exports.htmlToPage = function(html, title, style) {
-  var thisFileName = "utilities.js: ";
-  if(typeof(html) !== "string"){
-    throw new Error(thisFileName + "htmlToPage: input HTML is not a string");
-  }
-  if (typeof (style) !== "string") {
-    style = this.styleApgTable();
-  }
-  if (typeof (title) !== "string") {
-    title = "htmlToPage";
-  }
-  var page = '';
-  page += '<!DOCTYPE html>\n';
-  page += '<html lang="en">\n';
-  page += '<head>\n';
-  page += '<meta charset="utf-8">\n';
-  page += '<title>' + title + '</title>\n';
-  page += style;
-  page += html;
-  page += '</head>\n<body>\n';
-  page += '<p>' + new Date() + '</p>\n';
-  page += '</body>\n</html>\n';
-  return page;
-};
-// HTML style for the apg-table used by many `toHtml()` -type functions.
-exports.styleApgTable = function(){
-  var COLOR_MATCH = "#0000FF";
-  var COLOR_NOMATCH = "#ff0000";
-  var COLOR_EMPTY = "#00ff00";
-  var COLOR_INVALID = "#cc0000";
-  var COLOR_CTRL = "#0000FF";
-  var COLOR_CODE = "blue";
-  var COLOR_SAMP = "#008000";
-  var COLOR_VAR = "#cc0000";
-  var COLOR_BACK = "#b2ffb2";
-  var html = '<style>\n';
-  html += "table.apg-table,\n";
-  html += ".apg-table th,\n";
-  html += ".apg-table td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += ".apg-table th:last-child{text-align:left;}\n";
-  html += ".apg-table td:last-child{text-align:left;}\n";
-  html += ".apg-table b, \/*match*\/\n";
-  html += ".apg-table i, \/* empty *\/\n";
-  html += ".apg-table kbd, \/* no-match *\/\n";
-  html += ".apg-table em, \/* invalid characters *\/\n";
-  html += ".apg-table code, \/*control characters*\/\n";
-  html += ".apg-table strong, \/* bold *\/\n";
-  html += ".apg-table samp,\n";
-  html += ".apg-table var\n";
-  html += "{font-family:monospace;font-size:100%;font-style:normal;font-weight:normal;}\n";
-  html += ".apg-table caption\n";
-  html += "{font-family:monospace;font-size:125%;font-style:normal;font-weight:bold;text-align:left;}\n";
-  html += ".apg-table b{color:"+COLOR_MATCH+";}\n";
-  html += ".apg-table i{color:"+COLOR_EMPTY+";}\n";
-  html += ".apg-table kbd{color:"+COLOR_NOMATCH+";}\n";
-  html += ".apg-table em{color:"+COLOR_INVALID+";font-style:italic;font-weight:bold;}\n";
-  html += ".apg-table strong{font-weight:bold;}\n";
-  html += ".apg-table code{color:"+COLOR_CTRL+";font-style:italic;font-weight:bold;font-size:75%;}\n";
-  html += ".apg-table samp{background-color:"+COLOR_BACK+";color:"+COLOR_SAMP+";}\n";
-  html += ".apg-table var{color:"+COLOR_VAR+";font-weight:bold;}\n";
-  html += '</style>\n';
-  return html;
-}

@@ -9,6 +9,8 @@ module.exports = function() {
   "use strict";
   var thisFileName = "stats.js: ";
   var id = require("./identifiers.js");
+  var utils = require("./utilities");
+  var style = utils.styleNames;
   var rules = [];
   var udts = [];
   var stats = [];
@@ -116,93 +118,32 @@ module.exports = function() {
     }
   }
   /* helper for displayHtml() */
-  var displayOpsOnly = function() {
+  var displayRow = function(name, stat){
     var html = '';
     html += '<tr>';
-    html += '<td>ALT</td><td>' + stats[id.ALT].empty + '</td>';
-    html += '<td>' + stats[id.ALT].match + '</td>';
-    html += '<td>' + stats[id.ALT].nomatch + '</td>';
-    html += '<td>' + stats[id.ALT].total + '</td>';
+    html += '<td class="'+style.CLASS_ACTIVE+'">'+name+'</td>';
+    html += '<td class="'+style.CLASS_EMPTY+'">' + stat.empty + '</td>';
+    html += '<td class="'+style.CLASS_MATCH+'">' + stat.match + '</td>';
+    html += '<td class="'+style.CLASS_NOMATCH+'">' + stat.nomatch + '</td>';
+    html += '<td class="'+style.CLASS_ACTIVE+'">' + stat.total + '</td>';
     html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>CAT</td><td>' + stats[id.CAT].empty + '</td>';
-    html += '<td>' + stats[id.CAT].match + '</td>';
-    html += '<td>' + stats[id.CAT].nomatch + '</td>';
-    html += '<td>' + stats[id.CAT].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>REP</td><td>' + stats[id.REP].empty + '</td>';
-    html += '<td>' + stats[id.REP].match + '</td>';
-    html += '<td>' + stats[id.REP].nomatch + '</td>';
-    html += '<td>' + stats[id.REP].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>RNM</td><td>' + stats[id.RNM].empty + '</td>';
-    html += '<td>' + stats[id.RNM].match + '</td>';
-    html += '<td>' + stats[id.RNM].nomatch + '</td>';
-    html += '<td>' + stats[id.RNM].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>TBS</td><td>' + stats[id.TBS].empty + '</td>';
-    html += '<td>' + stats[id.TBS].match + '</td>';
-    html += '<td>' + stats[id.TBS].nomatch + '</td>';
-    html += '<td>' + stats[id.TBS].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>TLS</td><td>' + stats[id.TLS].empty + '</td>';
-    html += '<td>' + stats[id.TLS].match + '</td>';
-    html += '<td>' + stats[id.TLS].nomatch + '</td>';
-    html += '<td>' + stats[id.TLS].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>TRG</td><td>' + stats[id.TRG].empty + '</td>';
-    html += '<td>' + stats[id.TRG].match + '</td>';
-    html += '<td>' + stats[id.TRG].nomatch + '</td>';
-    html += '<td>' + stats[id.TRG].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>UDT</td><td>' + stats[id.UDT].empty + '</td>';
-    html += '<td>' + stats[id.UDT].match + '</td>';
-    html += '<td>' + stats[id.UDT].nomatch + '</td>';
-    html += '<td>' + stats[id.UDT].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>AND</td><td>' + stats[id.AND].empty + '</td>';
-    html += '<td>' + stats[id.AND].match + '</td>';
-    html += '<td>' + stats[id.AND].nomatch + '</td>';
-    html += '<td>' + stats[id.AND].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>NOT</td><td>' + stats[id.NOT].empty + '</td>';
-    html += '<td>' + stats[id.NOT].match + '</td>';
-    html += '<td>' + stats[id.NOT].nomatch + '</td>';
-    html += '<td>' + stats[id.NOT].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>BKR</td><td>' + stats[id.BKR].empty + '</td>';
-    html += '<td>' + stats[id.BKR].match + '</td>';
-    html += '<td>' + stats[id.BKR].nomatch + '</td>';
-    html += '<td>' + stats[id.BKR].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<tr>';
-    html += '<td>BKA</td><td>' + stats[id.BKA].empty + '</td>';
-    html += '<td>' + stats[id.BKA].match + '</td>';
-    html += '<td>' + stats[id.BKA].nomatch + '</td>';
-    html += '<td>' + stats[id.BKA].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td>BKN</td><td>' + stats[id.BKN].empty + '</td>';
-    html += '<td>' + stats[id.BKN].match + '</td>';
-    html += '<td>' + stats[id.BKN].nomatch + '</td>';
-    html += '<td>' + stats[id.BKN].total + '</td>';
-    html += '</tr>\n';
-    html += '<tr>';
-    html += '<td><strong>totals</strong></td><td>' + totals.empty + '</td>';
-    html += '<td>' + totals.match + '</td>';
-    html += '<td>' + totals.nomatch + '</td>';
-    html += '<td>' + totals.total + '</td>';
-    html += '</tr>\n';
+    return html;
+  }
+  var displayOpsOnly = function() {
+    var html = '';
+    html += displayRow("ALT", stats[id.ALT]);
+    html += displayRow("CAT", stats[id.CAT]);
+    html += displayRow("REP", stats[id.REP]);
+    html += displayRow("RNM", stats[id.RNM]);
+    html += displayRow("TRG", stats[id.TRG]);
+    html += displayRow("TBS", stats[id.TBS]);
+    html += displayRow("TLS", stats[id.TLS]);
+    html += displayRow("UDT", stats[id.UDT]);
+    html += displayRow("AND", stats[id.AND]);
+    html += displayRow("NOT", stats[id.NOT]);
+    html += displayRow("BKR", stats[id.BKR]);
+    html += displayRow("BKA", stats[id.BKA]);
+    html += displayRow("BKN", stats[id.BKN]);
     return html;
   }
   /* helper for displayHtml() */
@@ -213,11 +154,11 @@ module.exports = function() {
     for (var i = 0; i < rules.length; i += 1) {
       if (ruleStats[i].total > 0) {
         html += '<tr>';
-        html += '<td>' + ruleStats[i].name + '</td>';
-        html += '<td>' + ruleStats[i].empty + '</td>';
-        html += '<td>' + ruleStats[i].match + '</td>';
-        html += '<td>' + ruleStats[i].nomatch + '</td>';
-        html += '<td>' + ruleStats[i].total + '</td>';
+        html += '<td class="'+style.CLASS_ACTIVE+'">' + ruleStats[i].name + '</td>';
+        html += '<td class="'+style.CLASS_EMPTY+'">' + ruleStats[i].empty + '</td>';
+        html += '<td class="'+style.CLASS_MATCH+'">' + ruleStats[i].match + '</td>';
+        html += '<td class="'+style.CLASS_NOMATCH+'">' + ruleStats[i].nomatch + '</td>';
+        html += '<td class="'+style.CLASS_ACTIVE+'">' + ruleStats[i].total + '</td>';
         html += '</tr>\n';
       }
     }
@@ -227,33 +168,16 @@ module.exports = function() {
       for (var i = 0; i < udts.length; i += 1) {
         if (udtStats[i].total > 0) {
           html += '<tr>';
-          html += '<td>' + udtStats[i].name + '</td>';
-          html += '<td>' + udtStats[i].empty + '</td>';
-          html += '<td>' + udtStats[i].match + '</td>';
-          html += '<td>' + udtStats[i].nomatch + '</td>';
-          html += '<td>' + udtStats[i].total + '</td>';
+          html += '<td class="'+style.CLASS_ACTIVE+'">' + udtStats[i].name + '</td>';
+          html += '<td class="'+style.CLASS_EMPTY+'">' + udtStats[i].empty + '</td>';
+          html += '<td class="'+style.CLASS_MATCH+'">' + udtStats[i].match + '</td>';
+          html += '<td class="'+style.CLASS_NOMATCH+'">' + udtStats[i].nomatch + '</td>';
+          html += '<td class="'+style.CLASS_ACTIVE+'">' + udtStats[i].total + '</td>';
           html += '</tr>\n';
         }
       }
     }
     return html;
-  }
-  /* helper for displayHtml() */
-  var header = function(caption, classname) {
-    var html = '';
-    if (classname === undefined || typeof (classname) !== "string") {
-      classname = "apg-table";
-    }
-    html += '<table class="' + classname + '">\n';
-    if (typeof (caption) === "string") {
-      html += '<caption>' + caption + '</caption>\n';
-    }
-    html += '<tr><th>ops</th><th>EMPTY</th><th>MATCH</th><th>NOMATCH</th><th>totals</th></tr>\n';
-    return html;
-  }
-  /* helper for displayHtml() */
-  var footer = function() {
-    return "</table><br>\n";
   }
   /* called only by the parser to validate a stats object*/
   this.validate = function(name) {
@@ -290,9 +214,18 @@ module.exports = function() {
   // - *caption* - optional caption for the table
   // - *classname* - default is "apg-table" but maybe someday there will be a user who
   // really wants to use his/her own style sheet.
-  this.toHtml = function(type, caption, classname) {
+  this.toHtml = function(type, caption) {
     var display = displayOpsOnly;
-    var html = header(caption, classname);
+    var html = "";
+    html += '<table class="'+style.CLASS_LEFT0TABLE+'">\n';
+    if (typeof (caption) === "string") {
+      html += '<caption>' + caption + '</caption>\n';
+    }
+    html += '<tr><th class="'+style.CLASS_ACTIVE+'">ops</th>\n';
+    html += '<th class="'+style.CLASS_EMPTY+'">EMPTY</th>\n';
+    html += '<th class="'+style.CLASS_MATCH+'">MATCH</th>\n';
+    html += '<th class="'+style.CLASS_NOMATCH+'">NOMATCH</th>\n';
+    html += '<th class="'+style.CLASS_ACTIVE+'">totals</th></tr>\n';
     while (true) {
       if (type === undefined) {
         html += displayOpsOnly();
@@ -335,7 +268,11 @@ module.exports = function() {
       }
       break;
     }
-    html += footer();
+    html += "</table><br>\n";
     return html;
+  }
+  // Display the stats table in a complete HTML5 page.
+  this.toHtmlPage = function(type, caption, title) {
+    return utils.htmlToPage(this.toHtml(type, caption), title);
   }
 }
