@@ -56,6 +56,11 @@ module.exports = {
   // Used by the tracing facility to indicate the look around mode in the trace records display.
   LOOKAROUND_NONE : 50,
   LOOKAROUND_AHEAD : 51,
-  LOOKAROUND_BEHIND : 52
-  
+  LOOKAROUND_BEHIND : 52,
+  // Back reference values indicate whether a rule is back referenced in universal, parent or not at all mode.
+  BKR_MODE_NONE : 60, /* not back referenced at all */
+  BKR_MODE_UM : 61,   /* back referenced in universal mode */
+  BKR_MODE_PM : 62,   /* back referenced in parent-frame mode */
+  BKR_MODE_CS : 63,   /* back referenced in case-sensitive mode */
+  BKR_MODE_CI : 64    /* back referenced in case-insensitive mode */
 }

@@ -504,8 +504,9 @@ module.exports = function() {
         html += '(' + rules[line.opcode.index].name + ') ';
       }
       if (line.opcode.type === id.BKR) {
-        var casetype = line.opcode.insensitive ? "%i" : "%s";
-        html += '(\\' + casetype + rules[line.opcode.index].name + ') ';
+        var casetype = line.opcode.bkrCase === id.BKR_MODE_CI ? "%i" : "%s";
+        var modetype = line.opcode.bkrMode === id.BKR_MODE_UM ? "%u" : "%p";
+        html += '(\\' + casetype + modetype + rules[line.opcode.index].name + ') ';
       }
       if (line.opcode.type === id.UDT) {
         html += '(' + udts[line.opcode.index].name + ') ';

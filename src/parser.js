@@ -121,7 +121,8 @@ module.exports = function() {
     this.state = id.ACTIVE;
     this.phraseLength = 0;
     this.lookAround = lookAround[lookAround.length -1];
-    this.backrefFrame = backrefInit();
+    this.uFrame = backrefInit();
+    this.pFrame = backrefInit();
     this.success = false;
     this.evaluateRule = evaluateRule;
     this.evaluateUdt = evaluateUdt;
@@ -352,26 +353,6 @@ module.exports = function() {
     if (limitNodeHits <= 0) {
       throw new Error("parser: max node hits must be integer > 0: " + depth);
     }
-  }
-  // Set the back referencing mode.
-  // ```
-  // universalMode - true/false
-  // ```
-  // Universial mode means that the back reference to a rule name, say "A",
-  // is a reference to the last match, regardless of where or which rule the match was made in.
-  // False, or parent frame mode, means that the back reference to "A" is a reference to
-  // the last match on the parent rule's parse tree node level.
-  // e.g.
-  // ```
-  // S = A B \A
-  // B = A "b" \A
-  // A = "x" / "y"
-  // ```
-  // In universal mode this would match `xybyy` but not `xybyx`.
-  // That is \A refers to the last match regardless of where it occurs.
-  // In parent frame mode, this would match `xybyx` but not `xybyy`.
-  this.setUniversalMode = function(universalMode) {
-    parentFrameMode = (universalMode === false) ? true : false;
   }
   // This is the main function, called to parse an input string.
   // <ul>
@@ -619,15 +600,12 @@ module.exports = function() {
     op = opcodes[opIndex];
     rule = rules[op.index];
     callback = ruleCallbacks[op.index];
+    /* begin backrefs */
+    saveFrame = sysData.pFrame;
+    sysData.pFrame = backrefInit();
+    /* begin backrefs */
     var notLookAround = !inLookAround();
     if (notLookAround) {
-      /* begin backrefs */
-      if (parentFrameMode) {
-        saveFrame = sysData.backrefFrame;
-        sysData.backrefFrame = backrefInit();
-      }
-      /* begin backrefs */
-
       /* begin AST - note: ignore AST in lookaround */
       astDefined = that.ast && that.ast.ruleDefined(op.index);
       if (astDefined) {
@@ -672,19 +650,22 @@ module.exports = function() {
         }
       }
       /* end AST */
-
-      /* end backref */
-      if (parentFrameMode) {
-        sysData.backrefFrame = saveFrame;
+    }
+    /* end backref */
+    sysData.pFrame = saveFrame;
+    if (rules[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
+      /* save phrase on both the parent and universal frames */
+      /* BKR operator will decide which to us later */
+      sysData.pFrame[rules[op.index].lower] = {
+        phraseIndex : phraseIndex,
+        phraseLength : sysData.phraseLength
       }
-      if (rules[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
-        sysData.backrefFrame[rules[op.index].lower] = {
+      sysData.uFrame[rules[op.index].lower] = {
           phraseIndex : phraseIndex,
           phraseLength : sysData.phraseLength
         }
-      }
-      /* end backref */
     }
+    /* end backref */
   };
   // Validate the callback function's return sysData.
   // It's the user's responsibility to get it right
@@ -763,14 +744,19 @@ module.exports = function() {
         }
       }
       /* end AST */
-
-      /* back reference */
-      if (udts[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
-        sysData.backrefFrame[udts[op.index].lower] = {
+    }
+    /* back reference */
+    if (udts[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
+      /* save phrase on both the parent and universal frames */
+      /* BKR operator will decide which to us later */
+      sysData.pFrame[udt[op.index].lower] = {
+        phraseIndex : phraseIndex,
+        phraseLength : sysData.phraseLength
+      }
+      sysData.uFrame[udt[op.index].lower] = {
           phraseIndex : phraseIndex,
           phraseLength : sysData.phraseLength
         }
-      }
     }
   };
   // The `AND` syntactic predicate operator<br>
@@ -905,7 +891,7 @@ module.exports = function() {
   // For ASCII alphbetical characters the match may be case sensitive or insensitive,
   // depending on the back reference definition.
   var opBKR = function(opIndex, phraseIndex, sysData) {
-    var i, code, len, op, lmIndex, lmcode, lower;
+    var i, code, len, op, lmIndex, lmcode, lower, frame, insensitive;
     op = opcodes[opIndex];
     sysData.state = id.NOMATCH;
     if (op.index < rules.length) {
@@ -913,17 +899,19 @@ module.exports = function() {
     } else {
       lower = udts[op.index - rules.length].lower;
     }
-    if (sysData.backrefFrame[lower] === null) {
+    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame[lower]: sysData.uFrame[lower];
+    insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true: false;
+    if (frame === null) {
       return;
     }
-    lmIndex = sysData.backrefFrame[lower].phraseIndex;
-    len = sysData.backrefFrame[lower].phraseLength;
+    lmIndex = frame.phraseIndex;
+    len = frame.phraseLength;
     if (len === 0) {
       sysData.state = id.EMPTY;
       return;
     }
     if ((phraseIndex + len) <= charsEnd) {
-      if (op.insensitive) {
+      if (insensitive) {
         /* case-insensitive match */
         for (i = 0; i < len; i += 1) {
           code = chars[phraseIndex + i];
@@ -1143,7 +1131,7 @@ module.exports = function() {
     } /* else NOMATCH */
   }
   var opBKRBehind = function(opIndex, phraseIndex, sysData) {
-    var i, code, len, op, lmIndex, lmcode, lower, beg;
+    var i, code, len, op, lmIndex, lmcode, lower, beg, frame, insensitive;
     op = opcodes[opIndex];
     /* NOMATCH default */
     sysData.state = id.NOMATCH;
@@ -1153,11 +1141,13 @@ module.exports = function() {
     } else {
       lower = udts[op.index - rules.length].lower;
     }
-    if (sysData.backrefFrame[lower] === null) {
+    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame[lower]: sysData.uFrame[lower];
+    insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true: false;
+    if (frame === null) {
       return;
     }
-    lmIndex = sysData.backrefFrame[lower].phraseIndex;
-    len = sysData.backrefFrame[lower].phraseLength;
+    lmIndex = frame.phraseIndex;
+    len = frame.phraseLength;
     if (len === 0) {
       sysData.state = id.EMPTY;
       sysData.phraseLength = 0;
@@ -1165,7 +1155,7 @@ module.exports = function() {
     }
     beg = phraseIndex - len;
     if (beg >= 0) {
-      if (op.insensitive) {
+      if (insensitive) {
         /* case-insensitive match */
         for (i = 0; i < len; i += 1) {
           code = chars[beg + i];
