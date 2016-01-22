@@ -88,7 +88,7 @@ module.exports = function() {
     maxTreeDepth = 0;
     nodeHits = 0;
     maxMatched = 0;
-    lookAround = [{lookAround : id.LOOKAROUND_NONE, anchor : 0}];
+    lookAround = [{lookAround : id.LOOKAROUND_NONE, anchor : 0, charsEnd : 0, charsLength : 0}];
     rules = null;
     udts = null;
     chars = null;
@@ -766,13 +766,20 @@ module.exports = function() {
   var opAND = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
-    lookAround.push({lookAround : id.LOOKAROUND_AHEAD, anchor : phraseIndex});
+    lookAround.push({lookAround : id.LOOKAROUND_AHEAD, anchor : phraseIndex, charsEnd : charsEnd, charsLength : charsLength});
+    charsEnd = chars.length;
+    charsLength = chars.length - charsBegin;
     opExecute(opIndex + 1, phraseIndex, sysData);
+    var pop = lookAround.pop();
+
     /* !!!! DEBUG !!!! */
-    var test = lookAround.pop();
-    if (test.lookAround !== id.LOOKAROUND_AHEAD) {
+    if (pop.lookAround !== id.LOOKAROUND_AHEAD) {
       throw new Error("opAND: lookAround stack out of synch");
     }
+    /* !!!! DEBUG !!!! */
+
+    charsEnd = pop.charsEnd;
+    charsLength = pop.charsLength;
     sysData.phraseLength = 0;
     switch (sysData.state) {
     case id.EMPTY:
@@ -796,13 +803,20 @@ module.exports = function() {
   var opNOT = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
-    lookAround.push({lookAround : id.LOOKAROUND_AHEAD, anchor : phraseIndex});
+    lookAround.push({lookAround : id.LOOKAROUND_AHEAD, anchor : phraseIndex, charsEnd : charsEnd, charsLength : charsLength});
+    charsEnd = chars.length;
+    charsLength = chars.length - charsBegin;
     opExecute(opIndex + 1, phraseIndex, sysData);
+    var pop = lookAround.pop();
+
     /* !!!! DEBUG !!!! */
-    var test = lookAround.pop();
-    if (test.lookAround !== id.LOOKAROUND_AHEAD) {
+    if (pop.lookAround !== id.LOOKAROUND_AHEAD) {
       throw new Error("opNOT: lookAround stack out of synch");
     }
+    /* !!!! DEBUG !!!! */
+
+    charsEnd = pop.charsEnd;
+    charsLength = pop.charsLength;
     sysData.phraseLength = 0;
     switch (sysData.state) {
     case id.EMPTY:
