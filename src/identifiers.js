@@ -3,18 +3,20 @@
 "use strict";
 module.exports = {
   // Identifies the operator type. Used by the [generator](https://github.com/ldthomas/apg-js2)
-    // to indicate operator types in the grammar object. 
-    // Used by the [parser](./parser.html) when interpreting the grammar object.
+  // to indicate operator types in the grammar object. 
+  // Used by the [parser](./parser.html) when interpreting the grammar object.
+  /* the original ABNF operators */
   ALT : 1, /* alternation */
   CAT : 2, /* concatenation */
   REP : 3, /* repetition */
   RNM : 4, /* rule name */
-  UDT : 5, /* user-defined terminal */
-  AND : 6, /* positive look ahead */
-  NOT : 7, /* negative look ahead */
   TRG : 8, /* terminal range */
   TLS : 9, /* terminal literal string, case insensitive */
   TBS : 10, /* terminal binary string, case sensitive */
+  /* the super set, SABNF operators */
+  UDT : 5, /* user-defined terminal */
+  AND : 6, /* positive look ahead */
+  NOT : 7, /* negative look ahead */
   BKR : 11, /* back reference to a previously matched rule name */
   BKA : 12, /* positive look behind */
   BKN : 13, /* negative look behind */
@@ -30,8 +32,8 @@ module.exports = {
   NOMATCH : 23,
   // Used by [`AST` translator](./ast.html) (semantic analysis) and the user's callback functions
   // to indicate the direction of flow through the `AST` nodes.
-  // - *SEM_PRE* - indicates the downward direction through the `AST` node.
-  // - *SEM_POST* - indicates the upward direction through the `AST` node.
+  // - *SEM_PRE* - indicates the downward (pre-branch) direction through the `AST` node.
+  // - *SEM_POST* - indicates the upward (post-branch) direction through the `AST` node.
   SEM_PRE : 30,
   SEM_POST : 31,
   // Used by the user's callback functions to indicate to the `AST` translator (semantic analysis) how to proceed.
@@ -54,13 +56,19 @@ module.exports = {
   ATTR_RMR : 44,
   // Look around values indicate whether the parser is in look ahead or look behind mode.
   // Used by the tracing facility to indicate the look around mode in the trace records display.
+  // - *LOOKAROUND_NONE* - the parser is in normal parsing mode
+  // - *LOOKAROUND_AHEAD* - the parse is in look-ahead mode, phrase matching for operator `AND(&)` or `NOT(!)`
+  // - *LOOKAROUND_BEHIND* - the parse is in look-behind mode, phrase matching for operator `BKA(&&)` or `BKN(!!)`
   LOOKAROUND_NONE : 50,
   LOOKAROUND_AHEAD : 51,
   LOOKAROUND_BEHIND : 52,
-  // Back reference values indicate whether a rule is back referenced in universal, parent or not at all mode.
-  BKR_MODE_NONE : 60, /* not back referenced at all */
-  BKR_MODE_UM : 61,   /* back referenced in universal mode */
-  BKR_MODE_PM : 62,   /* back referenced in parent-frame mode */
-  BKR_MODE_CS : 63,   /* back referenced in case-sensitive mode */
-  BKR_MODE_CI : 64    /* back referenced in case-insensitive mode */
+  // Back reference rule mode indicators
+  // - *BKR_MODE_UM* - the back reference is using universal mode
+  // - *BKR_MODE_PM* - the back reference is using parent frame mode
+  // - *BKR_MODE_CS* - the back reference is using case-sensitive phrase matching
+  // - *BKR_MODE_CI* - the back reference is using case-insensitive phrase matching
+  BKR_MODE_UM : 61,
+  BKR_MODE_PM : 62,
+  BKR_MODE_CS : 63,
+  BKR_MODE_CI : 64
 }

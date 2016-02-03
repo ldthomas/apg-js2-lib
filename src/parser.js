@@ -11,7 +11,7 @@
 module.exports = function() {
   "use strict";
   var thisFileName = "parser.js: "
-  var that = this;
+  var _this = this;
   var id = require("./identifiers.js");
   var utils = require("./utilities.js");
   this.ast = null;
@@ -78,10 +78,8 @@ module.exports = function() {
     opExecute(length, phraseIndex, sysData);
     opcodes.pop();
   };
-  // Clears this object of any/all data that has been initialized or added to
-  // it.
-  // Called by `parse()` on initialization, allowing this object to be re-used
-  // for multiple parsing calls.
+  /* Clears this object of any/all data that has been initialized or added to it. */
+  /* Called by `parse()` on initialization, allowing this object to be re-used for multiple parsing calls. */
   var clear = function() {
     startRule = 0;
     treeDepth = 0;
@@ -100,6 +98,8 @@ module.exports = function() {
     syntaxData = null;
     opcodes = null;
   };
+  // Called to create and initialize a back reference object.
+  // Holds the matched phrases for rules and UDTs that have back references in the grammar.
   var backrefInit = function() {
     var obj = {};
     rules.forEach(function(rule) {
@@ -116,6 +116,20 @@ module.exports = function() {
     }
     return obj;
   }
+  // The system data structure that relays system information to and from the rule and UDT callback functions.
+  // - *state* - the state of the parser (see the `identifiers` object in
+  // [`apg-lib`](https://github.com/ldthomas/apg-js2-lib))
+  // - *phraseLength* - the number of characters matched if the state is `MATCHED` or `EMPTY`
+  // - *lookaround* - the top of the stack holds the current look around state,
+  // LOOKAROUND_NONE, LOOKAROUND_AHEAD or LOOKAROUND_BEHIND, 
+  // - *uFrame* - the "universal" back reference frame.
+  // Holds the last matched phrase for each of the back referenced rules and UDTs.
+  // - *pFrame* - the stack of "parent" back reference frames.
+  // Holds the matched phrase from the parent frame of each back referenced rules and UDTs.
+  // - *evaluateRule* - a reference to this object's `evaluateRule()` function.
+  // Can be called from a callback function (use with extreme caution!)
+  // - *evaluateUdt* - a reference to this object's `evaluateUdt()` function.
+  // Can be called from a callback function (use with extreme caution!)
   var systemData = function() {
     var _this = this;
     this.state = id.ACTIVE;
@@ -123,15 +137,16 @@ module.exports = function() {
     this.lookAround = lookAround[lookAround.length -1];
     this.uFrame = backrefInit();
     this.pFrame = backrefInit();
-    this.success = false;
     this.evaluateRule = evaluateRule;
     this.evaluateUdt = evaluateUdt;
+    /* refresh the parser state for the next operation */
     this.refresh = function(){
       _this.state = id.ACTIVE;
       _this.phraseLength = 0;
       _this.lookAround = lookAround[lookAround.length -1];
     }
   }
+  /* some around helper functions */
   var lookAroundValue = function() {
     return lookAround[lookAround.length - 1];
   }
@@ -145,40 +160,40 @@ module.exports = function() {
   var initializeAst = function() {
     var functionName = thisFileName + "initializeAst(): ";
     while (true) {
-      if (that.ast === undefined) {
-        that.ast = null;
+      if (_this.ast === undefined) {
+        _this.ast = null;
         break;
       }
-      if (that.ast === null) {
+      if (_this.ast === null) {
         break;
       }
-      if (that.ast.astObject !== "astObject") {
+      if (_this.ast.astObject !== "astObject") {
         throw new Error(functionName + "ast object not recognized");
       }
       break;
     }
-    if (that.ast !== null) {
-      that.ast.init(rules, udts, chars);
+    if (_this.ast !== null) {
+      _this.ast.init(rules, udts, chars);
     }
   }
   /* called by `parse()` to initialize the trace object, if one has been defined */
   var initializeTrace = function() {
     var functionName = thisFileName + "initializeTrace(): ";
     while (true) {
-      if (that.trace === undefined) {
-        that.trace = null;
+      if (_this.trace === undefined) {
+        _this.trace = null;
         break;
       }
-      if (that.trace === null) {
+      if (_this.trace === null) {
         break;
       }
-      if (that.trace.traceObject !== "traceObject") {
+      if (_this.trace.traceObject !== "traceObject") {
         throw new Error(functionName + "trace object not recognized");
       }
       break;
     }
-    if (that.trace !== null) {
-      that.trace.init(rules, udts, chars);
+    if (_this.trace !== null) {
+      _this.trace.init(rules, udts, chars);
     }
 
   }
@@ -186,20 +201,20 @@ module.exports = function() {
   var initializeStats = function() {
     var functionName = thisFileName + "initializeStats(): ";
     while (true) {
-      if (that.stats === undefined) {
-        that.stats = null;
+      if (_this.stats === undefined) {
+        _this.stats = null;
         break;
       }
-      if (that.stats === null) {
+      if (_this.stats === null) {
         break;
       }
-      if (that.stats.statsObject !== "statsObject") {
+      if (_this.stats.statsObject !== "statsObject") {
         throw new Error(functionName + "stats object not recognized");
       }
       break;
     }
-    if (that.stats !== null) {
-      that.stats.init(rules, udts);
+    if (_this.stats !== null) {
+      _this.stats.init(rules, udts);
     }
   }
   /* called by `parse()` to initialize the rules & udts from the grammar object */
@@ -262,11 +277,12 @@ module.exports = function() {
     }
     /* verify and normalize beginning index */
     if (typeof (beg) !== "number") {
-      throw new Error(functionName + "input beginning index not an integer");
-    }
-    beg = Math.floor(beg);
-    if (beg < 0 || beg >= input.length) {
-      throw new Error(functionName + "input beginning index out of range: " + beg);
+      beg = 0;
+    }else{
+      beg = Math.floor(beg);
+      if (beg < 0 || beg >= input.length) {
+        throw new Error(functionName + "input beginning index out of range: " + beg);
+      }
     }
     /* verify and normalize input length */
     if (typeof (len) !== "number") {
@@ -301,12 +317,12 @@ module.exports = function() {
     for (i = 0; i < udts.length; i += 1) {
       list.push(udts[i].lower);
     }
-    for ( var index in that.callbacks) {
+    for ( var index in _this.callbacks) {
       i = list.indexOf(index);
       if (i < 0) {
         throw new Error(functionName + "syntax callback '" + index + "' not a rule or udt name");
       }
-      func = that.callbacks[index];
+      func = _this.callbacks[index];
       if (func === false) {
         func = null;
       }
@@ -329,8 +345,7 @@ module.exports = function() {
     }
   }
   // Set the maximum parse tree depth allowed. The default is `Infinity`.
-  // A limit is not normally needed, but can be used to protect against
-  // a pathological grammar exceeding
+  // A limit is not normally needed, but can be used to protect against a pathological grammar exceeding
   // the call stack depth.
   this.setMaxTreeDepth = function(depth) {
     if (typeof (depth) !== "number") {
@@ -359,11 +374,10 @@ module.exports = function() {
   // <li>*grammar* - an instantiated grammar object - the output of `apg` for a
   // specific SABNF grammar</li>
   // <li>*startRule* - the rule name or rule index to be used as the root of the
-  // parse tree.
-  // This is usually the first rule, index = 0, of the grammar
+  // parse tree. This is usually the first rule, index = 0, of the grammar
   // but can be any rule defined in the above grammar object.</li>
-  // <li>*inputChars* - an array of integer character codes representing the
-  // input string to be parsed</li>
+  // <li>*inputChars* - the input string. Can be a string or an array of integer character codes representing the
+  // string.</li>
   // <li>*callbackData* - user-defined data object to be passed to the user's
   // callback functions.
   // This is not used by the parser in any way, merely passed on to the user.
@@ -375,33 +389,17 @@ module.exports = function() {
     return privateParse(grammar, startRule, callbackData);
   }
   // This form allows parsing of a sub-string of the full input string.
-  // It treats inputChars[inputIndex] as the first character to match and
-  // inputChars[inputIndex + inputLength - 1] as the last.
+  // It treats `inputChars[inputIndex]` as the first character to match and
+  // `inputChars[inputIndex + inputLength - 1]` as the last.
   this.parseSubstring = function(grammar, startRule, inputChars, inputIndex, inputLength, callbackData) {
     clear();
     initializeInputChars(inputChars, inputIndex, inputLength);
     return privateParse(grammar, startRule, callbackData);
   }
+  /* the main parser function */
   var privateParse = function(grammar, startRule, callbackData) {
-    var functionName, sysData;
+    var functionName, sysData, success;
     functionName = thisFileName + "parse(): ";
-    // The `sysData` object is used to communicate parsing sysDatas and states
-    // internally as well as
-    // with the user's callback functions. Named `sysData` early on when only
-    // parsing sysDatas
-    // were being handled with it, it has since grown to include some additional
-    // communication items.
-    // - *state* - the state of the parser
-    // (see the `identifiers` object in
-    // [`apg-lib`](https://github.com/ldthomas/apg-js2-lib))
-    // - *phraseLength* - the number of characters matched if the state is
-    // `MATCHED` or `EMPTY`
-    // - *evaluateRule* - a reference to this object's `evaluateRule()`
-    // function. Can be called from a callback function
-    // (use with extreme caution!)
-    // - *evaluateUdt* - a reference to this object's `evaluateUdt()` function.
-    // Can be called from a callback function
-    // (use with extreme caution!)
     initializeGrammar(grammar);
     startRule = initializeStartRule(startRule);
     initializeCallbacks();
@@ -426,19 +424,19 @@ module.exports = function() {
       throw new Error(functionName + "final state should never be 'ACTIVE'");
       break;
     case id.NOMATCH:
-      sysData.success = false;
+      success = false;
       break;
     case id.EMPTY:
     case id.MATCH:
       if (sysData.phraseLength === charsLength) {
-        sysData.success = true;
+        success = true;
       } else {
-        sysData.success = false;
+        success = false;
       }
       break;
     }
     return {
-      success : sysData.success,
+      success : success,
       state : sysData.state,
       length : charsLength,
       matched : sysData.phraseLength,
@@ -471,8 +469,8 @@ module.exports = function() {
   var opCAT = function(opIndex, phraseIndex, sysData) {
     var op, success, astLength, catCharIndex, catPhrase;
     op = opcodes[opIndex];
-    if (that.ast) {
-      astLength = that.ast.getLength();
+    if (_this.ast) {
+      astLength = _this.ast.getLength();
     }
     success = true;
     catCharIndex = phraseIndex;
@@ -493,8 +491,8 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
-      if (that.ast) {
-        that.ast.setLength(astLength);
+      if (_this.ast) {
+        _this.ast.setLength(astLength);
       }
     }
   };
@@ -509,8 +507,8 @@ module.exports = function() {
     repCharIndex = phraseIndex;
     repPhrase = 0;
     repCount = 0;
-    if (that.ast) {
-      astLength = that.ast.getLength();
+    if (_this.ast) {
+      astLength = _this.ast.getLength();
     }
     while (true) {
       if (repCharIndex >= charsEnd) {
@@ -545,8 +543,8 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
-      if (that.ast) {
-        that.ast.setLength(astLength);
+      if (_this.ast) {
+        _this.ast.setLength(astLength);
       }
     }
   };
@@ -607,10 +605,10 @@ module.exports = function() {
     var notLookAround = !inLookAround();
     if (notLookAround) {
       /* begin AST - note: ignore AST in lookaround */
-      astDefined = that.ast && that.ast.ruleDefined(op.index);
+      astDefined = _this.ast && _this.ast.ruleDefined(op.index);
       if (astDefined) {
-        astLength = that.ast.getLength();
-        downIndex = that.ast.down(op.index, rules[op.index].name);
+        astLength = _this.ast.getLength();
+        downIndex = _this.ast.down(op.index, rules[op.index].name);
       }
       /* begin AST */
     }
@@ -644,9 +642,9 @@ module.exports = function() {
       /* end AST */
       if (astDefined) {
         if (sysData.state === id.NOMATCH) {
-          that.ast.setLength(astLength);
+          _this.ast.setLength(astLength);
         } else {
-          that.ast.up(op.index, rules[op.index].name, phraseIndex, sysData.phraseLength);
+          _this.ast.up(op.index, rules[op.index].name, phraseIndex, sysData.phraseLength);
         }
       }
       /* end AST */
@@ -655,7 +653,7 @@ module.exports = function() {
     sysData.pFrame = saveFrame;
     if (rules[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
       /* save phrase on both the parent and universal frames */
-      /* BKR operator will decide which to us later */
+      /* BKR operator will decide which to use later */
       sysData.pFrame[rules[op.index].lower] = {
         phraseIndex : phraseIndex,
         phraseLength : sysData.phraseLength
@@ -719,11 +717,11 @@ module.exports = function() {
     var notLookAround = !inLookAround();
     if (notLookAround) {
       /* begin AST */
-      astDefined = that.ast && that.ast.udtDefined(op.index);
+      astDefined = _this.ast && _this.ast.udtDefined(op.index);
       if (astDefined) {
         astIndex = rules.length + op.index;
-        astLength = that.ast.getLength();
-        downIndex = that.ast.down(astIndex, udts[op.index].name);
+        astLength = _this.ast.getLength();
+        downIndex = _this.ast.down(astIndex, udts[op.index].name);
       }
       /* begin AST */
     }
@@ -738,9 +736,9 @@ module.exports = function() {
       /* end AST */
       if (astDefined) {
         if (sysData.state === id.NOMATCH) {
-          that.ast.setLength(astLength);
+          _this.ast.setLength(astLength);
         } else {
-          that.ast.up(astIndex, udts[op.index].name, phraseIndex, sysData.phraseLength);
+          _this.ast.up(astIndex, udts[op.index].name, phraseIndex, sysData.phraseLength);
         }
       }
       /* end AST */
@@ -748,7 +746,7 @@ module.exports = function() {
     /* back reference */
     if (udts[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
       /* save phrase on both the parent and universal frames */
-      /* BKR operator will decide which to us later */
+      /* BKR operator will decide which to use later */
       sysData.pFrame[udt[op.index].lower] = {
         phraseIndex : phraseIndex,
         phraseLength : sysData.phraseLength
@@ -759,7 +757,8 @@ module.exports = function() {
         }
     }
   };
-  // The `AND` syntactic predicate operator<br>
+  // The `AND` operator<br>
+  // This is the positive `look ahead` operator.
   // Executes its single child node, returning a matched empty phrase
   // if the child node succeeds. Fails if the child node fails.
   // *Always* backtracks on any matched phrase and returns empty on success.
@@ -771,13 +770,6 @@ module.exports = function() {
     charsLength = chars.length - charsBegin;
     opExecute(opIndex + 1, phraseIndex, sysData);
     var pop = lookAround.pop();
-
-    /* !!!! DEBUG !!!! */
-    if (pop.lookAround !== id.LOOKAROUND_AHEAD) {
-      throw new Error("opAND: lookAround stack out of synch");
-    }
-    /* !!!! DEBUG !!!! */
-
     charsEnd = pop.charsEnd;
     charsLength = pop.charsLength;
     sysData.phraseLength = 0;
@@ -795,7 +787,8 @@ module.exports = function() {
       throw new Error('opAND: invalid state ' + sysData.state);
     }
   };
-  // The `NOT` syntactic predicate operator<br>
+  // The `NOT` operator<br>
+  // This is the negative `look ahead` operator.
   // Executes its single child node, returning a matched empty phrase
   // if the child node *fails*. Fails if the child node succeeds.
   // *Always* backtracks on any matched phrase and returns empty
@@ -808,13 +801,6 @@ module.exports = function() {
     charsLength = chars.length - charsBegin;
     opExecute(opIndex + 1, phraseIndex, sysData);
     var pop = lookAround.pop();
-
-    /* !!!! DEBUG !!!! */
-    if (pop.lookAround !== id.LOOKAROUND_AHEAD) {
-      throw new Error("opNOT: lookAround stack out of synch");
-    }
-    /* !!!! DEBUG !!!! */
-
     charsEnd = pop.charsEnd;
     charsLength = pop.charsLength;
     sysData.phraseLength = 0;
@@ -846,9 +832,8 @@ module.exports = function() {
   // The `TBS` operator<br>
   // Matches its pre-defined phrase against the input string.
   // All characters must match exactly.
-  // Case-sensitive literal strings (`'string'`) are translated to `TBS`
-  // operators
-  // by `apg`.
+  // Case-sensitive literal strings (`'string'` && `%s"string"`) are translated to `TBS`
+  // operators by `apg`.
   // Phrase length of zero is not allowed.
   // Empty phrases can only be defined with `TLS` operators.
   var opTBS = function(opIndex, phraseIndex, sysData) {
@@ -900,10 +885,13 @@ module.exports = function() {
       sysData.phraseLength = len;
     } /* else NOMATCH */
   };
-  // The `BKR` operator<br>
+  // The `BKR` operator.<br>
+  // The back reference operator.
   // Matches the last matched phrase of the named rule or UDT against the input string.
-  // For ASCII alphbetical characters the match may be case sensitive or insensitive,
+  // For ASCII alphbetical characters the match may be case sensitive (`%s`) or insensitive (`%i`),
   // depending on the back reference definition.
+  // For `universal` mode (`%u`) matches the last phrase found anywhere in the grammar.
+  // For `parent frame` mode (`%p`) matches the last phrase found in the parent rule only.
   var opBKR = function(opIndex, phraseIndex, sysData) {
     var i, code, len, op, lmIndex, lmcode, lower, frame, insensitive;
     op = opcodes[opIndex];
@@ -960,16 +948,16 @@ module.exports = function() {
       sysData.phraseLength = len;
     } /* else NOMATCH */
   };
+  // The `BKA` operator<br>
+  // This is the positive `look behind` operator.
+  // It succeeds if the phrase is found to preceed `phraseIndex`.
+  // It then back tracks and returns NOMATCH or an empty string.
   var opBKA = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
     lookAround.push({lookAround : id.LOOKAROUND_BEHIND, anchor : phraseIndex});
     opExecute(opIndex + 1, phraseIndex, sysData);
-    /* !!!! DEBUG !!!! */
-    var test = lookAround.pop();
-    if (test.lookAround !== id.LOOKAROUND_BEHIND) {
-      throw new Error("opBKA: lookAround stack out of sync");
-    }
+    lookAround.pop();
     sysData.phraseLength = 0;
     switch (sysData.state) {
     case id.EMPTY:
@@ -985,16 +973,16 @@ module.exports = function() {
       throw new Error('opBKA: invalid state ' + sysData.state);
     }
   }
+  // The `BKN` operator<br>
+  // This is the negative `look behind` operator.
+  // It succeeds if the phrase is NOT found to preceed `phraseIndex`.
+  // It then back tracks and returns NOMATCH or an empty string.
   var opBKN = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
     lookAround.push({lookAround : id.LOOKAROUND_BEHIND, anchor : phraseIndex});
     opExecute(opIndex + 1, phraseIndex, sysData);
-    /* !!!! DEBUG !!!! */
-    var test = lookAround.pop();
-    if (test.lookAround !== id.LOOKAROUND_BEHIND) {
-      throw new Error("opBKN: lookAround stack out of sync");
-    }
+    lookAround.pop();
     sysData.phraseLength = 0;
     switch (sysData.state) {
     case id.EMPTY:
@@ -1008,11 +996,13 @@ module.exports = function() {
       throw new Error('opBKN: invalid state ' + sysData.state);
     }
   }
+  // The right-to-left concatenation operator.<br>
+  // Works just like `CAT` except it parses right to left from the first character preceeding `phraseIndex`.
   var opCATBehind = function(opIndex, phraseIndex, sysData) {
     var op, success, astLength, catCharIndex, catPhrase, catMatched;
     op = opcodes[opIndex];
-    if (that.ast) {
-      astLength = that.ast.getLength();
+    if (_this.ast) {
+      astLength = _this.ast.getLength();
     }
     success = true;
     catCharIndex = phraseIndex;
@@ -1034,19 +1024,21 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
-      if (that.ast) {
-        that.ast.setLength(astLength);
+      if (_this.ast) {
+        _this.ast.setLength(astLength);
       }
     }
   };
+  // The right-to-left repetition operator.<br>
+  // Works just like `REP` except it parses right to left from the first character preceeding `phraseIndex`.
   var opREPBehind = function(opIndex, phraseIndex, sysData) {
     var op, astLength, repCharIndex, repPhrase, repCount;
     op = opcodes[opIndex];
     repCharIndex = phraseIndex;
     repPhrase = 0;
     repCount = 0;
-    if (that.ast) {
-      astLength = that.ast.getLength();
+    if (_this.ast) {
+      astLength = _this.ast.getLength();
     }
     while (true) {
       if (repCharIndex <= 0) {
@@ -1081,11 +1073,13 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
-      if (that.ast) {
-        that.ast.setLength(astLength);
+      if (_this.ast) {
+        _this.ast.setLength(astLength);
       }
     }
   }
+  // The right-to-left terminal range operator.<br>
+  // Works just like `TRG` except it parses right to left from the first character preceeding `phraseIndex`.
   var opTRGBehind = function(opIndex, phraseIndex, sysData) {
     var op = opcodes[opIndex];
     sysData.state = id.NOMATCH;
@@ -1098,6 +1092,8 @@ module.exports = function() {
       }
     }
   }
+  // The right-to-left terminal binary string operator.<br>
+  // Works just like `TBS` except it parses right to left from the first character preceeding `phraseIndex`.
   var opTBSBehind = function(opIndex, phraseIndex, sysData) {
     var i, op, len, beg;
     op = opcodes[opIndex];
@@ -1117,6 +1113,8 @@ module.exports = function() {
       sysData.phraseLength = len;
     } /* else NOMATCH */
   }
+  // The right-to-left terminal literal string operator.<br>
+  // Works just like `TLS` except it parses right to left from the first character preceeding `phraseIndex`.
   var opTLSBehind = function(opIndex, phraseIndex, sysData) {
     var op, char, beg, len;
     op = opcodes[opIndex];
@@ -1144,6 +1142,8 @@ module.exports = function() {
       sysData.phraseLength = len;
     } /* else NOMATCH */
   }
+  // The right-to-left back reference operator.<br>
+  // Works just like `BKR` except it parses right to left from the first character preceeding `phraseIndex`.
   var opBKRBehind = function(opIndex, phraseIndex, sysData) {
     var i, code, len, op, lmIndex, lmcode, lower, beg, frame, insensitive;
     op = opcodes[opIndex];
@@ -1226,10 +1226,10 @@ module.exports = function() {
       }
     }
     sysData.refresh();
-    if (that.trace !== null) {
+    if (_this.trace !== null) {
       /* collect the trace record for down the parse tree */
       var lk = lookAroundValue();
-      that.trace.down(op, sysData.state, phraseIndex, sysData.phraseLength,
+      _this.trace.down(op, sysData.state, phraseIndex, sysData.phraseLength,
           lk.anchor, lk.lookAround);
     }
     if (inLookBehind()) {
@@ -1326,14 +1326,14 @@ module.exports = function() {
     if (!inLookAround() && (phraseIndex + sysData.phraseLength > maxMatched)) {
       maxMatched = phraseIndex + sysData.phraseLength;
     }
-    if (that.stats !== null) {
+    if (_this.stats !== null) {
       /* collect the statistics */
-      that.stats.collect(op, sysData);
+      _this.stats.collect(op, sysData);
     }
-    if (that.trace !== null) {
+    if (_this.trace !== null) {
       /* collect the trace record for up the parse tree */
       var lk = lookAroundValue();
-      that.trace.up(op, sysData.state, phraseIndex, sysData.phraseLength,
+      _this.trace.up(op, sysData.state, phraseIndex, sysData.phraseLength,
           lk.anchor, lk.lookAround);
     }
     treeDepth -= 1;

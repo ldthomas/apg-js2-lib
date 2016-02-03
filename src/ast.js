@@ -27,6 +27,7 @@ module.exports = function() {
   "use strict";
   var thisFileName = "ast.js: ";
   var id = require("./identifiers.js");
+  var utils = require("./utilities.js");
   var that = this;
   var rules = null;
   var udts = null;
@@ -38,7 +39,7 @@ module.exports = function() {
   var records = [];
   this.callbacks = [];
   this.astObject = "astObject";
-  // Called by the parser to define the rule names, `UDT`s and the input string
+  // Called by the parser to initialize the AST, defining the rule names, `UDT`s and the input string
   // for this `AST`.
   this.init = function(rulesIn, udtsIn, charsIn) {
     stack.length = 0;
@@ -64,8 +65,7 @@ module.exports = function() {
       var lower = index.toLowerCase();
       i = list.indexOf(lower);
       if (i < 0) {
-        throw new Error(thisFileName + "init: " + "node '" + index
-            + "' not a rule or udt name");
+        throw new Error(thisFileName + "init: " + "node '" + index + "' not a rule or udt name");
       }
       if (typeof (that.callbacks[index]) === "function") {
         nodesDefined[i] = true;
@@ -137,16 +137,14 @@ module.exports = function() {
       callback = nodeCallbacks[record.callbackIndex];
       if (record.state === id.SEM_PRE) {
         if (callback !== null) {
-          ret = callback(id.SEM_PRE, chars, record.phraseIndex,
-              record.phraseLength, data);
+          ret = callback(id.SEM_PRE, chars, record.phraseIndex, record.phraseLength, data);
           if (ret === id.SEM_SKIP) {
             i = record.thatIndex;
           }
         }
       } else {
         if (callback !== null) {
-          callback(id.SEM_POST, chars, record.phraseIndex, record.phraseLength,
-              data);
+          callback(id.SEM_POST, chars, record.phraseIndex, record.phraseLength, data);
         }
       }
     }
@@ -175,44 +173,44 @@ module.exports = function() {
     }
     return ret;
   }
-  /* helper for XML display */
-  function phrase(chars, depth, beg, len) {
-    var xml = '';
-    var maxLine = 30;
-    var i;
-    depth += 2;
-    var end = Math.min(chars.length, beg + len);
-    xml += indent(depth);
-    for (i = beg; i < end; i += 1) {
-      if (i > beg) {
-        xml += ",";
-        if (i % maxLine === 0) {
-          xml += "\n" + indent(depth);
-        }
-      }
-      xml += chars[i];
-    }
-    xml += "\n";
-    return xml;
-  }
   // Generate an `XML` version of the `AST`.
   // Useful if you want to use a special or favorite XML parser to translate the
   // `AST`.
-  this.displayXml = function() {
+  //
+  // `mode` can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`. Defaults to `"ascii"`.
+  // Determines the format for the character code representation of the phrases.
+  this.toXml = function(mode) {
+    var display = utils.charsToDec;
+    var caption = "decimal integer character codes";
+    if (typeof (mode) === "string" && mode.length >= 3) {
+      mode = mode.slice(0, 3).toLowerCase();
+      if (mode === "asc") {
+        display = utils.charsToAscii;
+        caption = "ASCII for printing characters, hex for non-printing";
+      } else if (mode === "hex") {
+        display = utils.charsToHex;
+        caption = "hexidecimal integer character codes"
+      } else if (mode === "uni") {
+        display = utils.charsToUnicode;
+        caption = "Unicode UTF-32 integer character codes"
+      }
+    }
     var xml = "";
     var i, j, depth = 0;
     xml += '<?xml version="1.0" encoding="utf-8"?>\n';
-    xml += '<root nodes="' + records.length / 2 + '" characters="'
-        + chars.length + '">\n';
-    xml += '<!-- input string character codes, comma-delimited UTF-32 integers -->\n';
-    xml += phrase(chars, depth, 0, chars.length);
+    xml += '<root nodes="' + records.length / 2 + '" characters="' + chars.length + '">\n';
+    xml += '<!-- input string, '+caption+' -->\n';
+    xml += indent(depth + 2);
+    xml += display(chars);
+    xml += "\n";
     records.forEach(function(rec, index) {
       if (rec.state === id.SEM_PRE) {
         depth += 1;
         xml += indent(depth);
-        xml += '<node name="' + rec.name + '" phraseIndex="' + rec.phraseIndex
-            + '" phraseLength="' + rec.phraseLength + '">\n'
-        xml += phrase(chars, depth, rec.phraseIndex, rec.phraseLength);
+        xml += '<node name="' + rec.name + '" index="' + rec.phraseIndex + '" length="' + rec.phraseLength + '">\n';
+        xml += indent(depth + 2);
+        xml += display(chars, rec.phraseIndex, rec.phraseLength);
+        xml += "\n";
       } else {
         xml += indent(depth);
         xml += '</node><!-- name="' + rec.name + '" -->\n'
@@ -224,28 +222,22 @@ module.exports = function() {
     return xml;
   }
   // Generate a JavaScript object version of the `AST`.
-  this.phrases = function(obj) {
-    var i, j, str, beg, end, record;
-    if(typeof(obj) !== "object" || obj == null){
-      return;
-    }
-    for(i = 0; i < records.length; i += 1){
+  // Used by the phrase matching engine, `apg-exp`.
+  this.phrases = function() {
+    var obj = {};
+    var i, record;
+    for (i = 0; i < records.length; i += 1) {
       record = records[i];
       if (record.state === id.SEM_PRE) {
-        if(Array.isArray(obj[record.name]) === false){
+        if (!Array.isArray(obj[record.name])) {
           obj[record.name] = [];
         }
-        str = "";
-        end = record.phraseIndex + record.phraseLength
-        for(j = record.phraseIndex; j < end; j += 1){
-          str += String.fromCharCode(chars[j]);
-        }
         obj[record.name].push({
-          phrase : str,
-          index : record.phraseIndex
-//          length : record.phraseLength
+          index : record.phraseIndex,
+          length : record.phraseLength
         });
       }
     }
+    return obj;
   }
 }

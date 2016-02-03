@@ -1,4 +1,4 @@
-7// This module provides a means of tracing the parser through the parse tree as it goes.
+// This module provides a means of tracing the parser through the parse tree as it goes.
 // It is the primary debugging facility for debugging both the SABNF grammar syntax
 // and the input strings that are supposed to valid grammar sentences.
 // It is also a very informative and educational tool for understanding
@@ -54,7 +54,7 @@ module.exports = function() {
   var MODE_DEC = 10;
   var MODE_ASCII = 8;
   var MODE_UNICODE = 32;
-  var MAX_PHRASE = 128;
+  var MAX_PHRASE = 80;
   var MAX_TLS = 5;
   var utils = require("./utilities.js");
   var style = utils.styleNames;
@@ -312,6 +312,10 @@ module.exports = function() {
       filteredRecords += 1;
     }
   };
+  // Translate the trace records to HTML format.
+  // *modearg* - can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`.
+  // Determines the format of the string character code display.
+  // *caption* - optional caption for the HTML table.
   this.toHtml = function(modearg, caption) {
     /* writes the trace records as a table in a complete html page */
     var mode = MODE_ASCII;
@@ -331,6 +335,7 @@ module.exports = function() {
     html += htmlFooter();
     return html;
   }
+  // Translate the trace records to HTML format and create a complete HTML page for browser display.
   this.toHtmlPage = function(mode, caption, title){
     return utils.htmlToPage(this.toHtml(mode, caption), title);
   }
@@ -363,7 +368,7 @@ module.exports = function() {
     header += '<h1>JavaScript APG Trace</h1>\n';
     header += '<h3>&nbsp;&nbsp;&nbsp;&nbsp;display mode: ' + modeName + '</h3>\n';
     header += '<h5>&nbsp;&nbsp;&nbsp;&nbsp;' + new Date() + '</h5>\n';
-    header += '<table class="'+style.CLASS_LEFT2TABLE+'">\n';
+    header += '<table class="'+style.CLASS_LAST2_LEFT_TABLE+'">\n';
     if (typeof (caption) === "string") {
       header += '<caption>' + caption + '</caption>';
     }
@@ -374,12 +379,12 @@ module.exports = function() {
     /* close the </table> tag */
     footer += '</table>\n';
     /* display a table legend */
-    footer += '<p>legend:<br>\n';
+    footer += '<p class="'+style.CLASS_MONOSPACE+'">legend:<br>\n';
     footer += '(a)&nbsp;-&nbsp;line number<br>\n';
     footer += '(b)&nbsp;-&nbsp;matching line number<br>\n';
     footer += '(c)&nbsp;-&nbsp;phrase offset<br>\n';
     footer += '(d)&nbsp;-&nbsp;phrase length<br>\n';
-    footer += '(e)&nbsp;-&nbsp;relative tree depth<br>\n';
+    footer += '(e)&nbsp;-&nbsp;tree depth<br>\n';
     footer += '(f)&nbsp;-&nbsp;operator state<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_ACTIVE + '">&darr;</span>&nbsp;&nbsp;phrase opened<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH + '">&uarr;M</span> phrase matched<br>\n';
@@ -396,13 +401,13 @@ module.exports = function() {
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_REMAINDER
         + '">remainder characters(not yet examined by parser)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRL
-        + '">control characters (ASCII mode only)</span><br>\n';
+        + '">control characters, TAB, LF, CR, etc. (ASCII mode only)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_EMPTY + ' empty string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_END + ' end of input string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_CONTINUE
-        + ' input string truncated<br>\n';
+        + ' input string display truncated<br>\n';
     footer += '</p>\n';
-    footer += '<p>\n';
+    footer += '<p class="'+style.CLASS_MONOSPACE+'">\n';
     footer += '<sup>&dagger;</sup>original ABNF operators:<br>\n';
     footer += 'ALT - alternation<br>\n';
     footer += 'CAT - concatenation<br>\n';
@@ -418,7 +423,7 @@ module.exports = function() {
     footer += 'NOT - negative look ahead<br>\n';
     footer += 'BKA - positive look behind<br>\n';
     footer += 'BKN - negative look behind<br>\n';
-    footer += 'BKR - back referance<br>\n';
+    footer += 'BKR - back reference<br>\n';
     footer += '</p>\n';
     /* close the page */
     footer += '</body>\n';
@@ -547,25 +552,21 @@ module.exports = function() {
     var html = '';
     for (var i = 0; i < depth; i += 1) {
       html += '.';
-      // html += '&#46;';
-      // if (i % 2 === 0) {
-      // html += '&nbsp;';
-      // } else {
-      // html += '&#46;';
-      // }
     }
     return html;
   };
+  /* format the TRG operator */
   var displayTrg = function(mode, op) {
     var html = "";
     if (op.type === id.TRG) {
       var min, max, hex;
-      if (mode === MODE_HEX) {
+      if (mode === MODE_HEX || mode === MODE_UNICODE) {
         hex = op.min.toString(16).toUpperCase();
         if (hex.length % 2 !== 0) {
           hex = "0" + hex;
         }
-        html = "%x" + hex;
+        html += (mode === MODE_HEX) ? "%x" : "U+";
+        html += hex;
         hex = op.max.toString(16).toUpperCase();
         if (hex.length % 2 !== 0) {
           hex = "0" + hex;
@@ -577,6 +578,7 @@ module.exports = function() {
     }
     return html;
   }
+  /* format the REP operator */
   var displayRep = function(mode, op) {
     var html = "";
     if (op.type === id.REP) {
@@ -606,12 +608,13 @@ module.exports = function() {
     }
     return html;
   }
+  /* format the TBS operator */
   var displayTbs = function(mode, op) {
     var html = "";
     if (op.type === id.TBS) {
       var len = Math.min(op.string.length, MAX_TLS * 2);
-      if (mode === MODE_HEX) {
-        html = "%x";
+      if (mode === MODE_HEX || mode === MODE_UNICODE) {
+        html += (mode === MODE_HEX) ? "%x" : "U+";
         for (var i = 0; i < len; i += 1) {
           var hex;
           if (i > 0) {
@@ -638,6 +641,7 @@ module.exports = function() {
     }
     return html;
   }
+  /* format the TLS operator */
   var displayTls = function(mode, op) {
     var html = "";
     if (op.type === id.TLS) {
@@ -673,7 +677,7 @@ module.exports = function() {
       } else {
         html = '"';
         for (var i = 0; i < len; i += 1) {
-          html += String.fromCharCode(op.string[i]);
+          html += utils.asciiChars[op.string[i]];
         }
         if (len < op.string.length) {
           html += PHRASE_CONTINUE;
@@ -683,6 +687,7 @@ module.exports = function() {
     }
     return html;
   }
+  /* display phrases matched in look-behind mode */
   var displayBehind = function(mode, chars, state, index, length, anchor) {
     var html = '';
     var beg1, len1, beg2, len2;
@@ -698,18 +703,9 @@ module.exports = function() {
     case id.MATCH:
     case id.ACTIVE:
       beg1 = index - length;
-      len1 = anchor -beg1;
-      if(len1 > 0){
-        html += spanBehind;
-        html += subPhrase(mode, chars, beg1, len1);
-        html += spanend;
-        prev = true;
-      }
+      len1 = anchor - beg1;
       beg2 = anchor;
       len2 = chars.length - beg2;
-      html += spanRemainder;
-      html += subPhrase(mode, chars, beg2, len2, prev);
-      html += spanend;
       break;
     }
     lastchar = PHRASE_END;
@@ -721,43 +717,51 @@ module.exports = function() {
       lastchar = PHRASE_CONTINUE;
       len2 = MAX_PHRASE - len1;
     }
+    if(len1 > 0){
+      html += spanBehind;
+      html += subPhrase(mode, chars, beg1, len1, prev);
+      html += spanend;
+      prev = true;
+    }
+    if(len2 > 0){
+      html += spanRemainder;
+      html += subPhrase(mode, chars, beg2, len2, prev);
+      html += spanend;
+    }
     return html + lastchar;
   }
+  /* display phrases matched in look-ahead mode */
   var displayAhead = function(mode, chars, state, index, length) {
     var spanAhead = '<span class="' + style.CLASS_LH_MATCH + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
   }
+  /* display phrases matched in normal parsing mode */
   var displayNone = function(mode, chars, state, index, length) {
     var spanAhead = '<span class="' + style.CLASS_MATCH + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
   }
   var displayForward = function(mode, chars, state, index, length, spanAhead) {
     var html = '';
-    var len1, beg2, len2;
+    var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
     var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
     var spanend = '</span>';
+    var prev = false;
     switch (state) {
     case id.EMPTY:
       html += PHRASE_EMPTY;
     case id.NOMATCH:
     case id.ACTIVE:
+      beg1 = index;
       len1 = 0;
-      len2 = chars.length - index;
-      html += spanRemainder;
-      html += subPhrase(mode, chars, index, len2);
-      html += spanend;
+      beg2 = index;
+      len2 = chars.length - beg2;
       break;
     case id.MATCH:
+      beg1 = index;
       len1 = length;
-      html += spanAhead;
-      html += subPhrase(mode, chars, index, len1);
-      html += spanend;
       beg2 = index + len1;
       len2 = chars.length - beg2;
-      html += spanRemainder;
-      html += subPhrase(mode, chars, beg2, len2, true);
-      html += spanend;
       break;
     }
     lastchar = PHRASE_END;
@@ -768,6 +772,17 @@ module.exports = function() {
     } else if (len1 + len2 > MAX_PHRASE) {
       lastchar = PHRASE_CONTINUE;
       len2 = MAX_PHRASE - len1;
+    }
+    if(len1 > 0){
+      html += spanAhead;
+      html += subPhrase(mode, chars, beg1, len1, prev);
+      html += spanend;
+      prev = true;
+    }
+    if(len2 > 0){
+      html += spanRemainder;
+      html += subPhrase(mode, chars, beg2, len2, prev);
+      html += spanend;
     }
     return html + lastchar;
   }
@@ -775,141 +790,26 @@ module.exports = function() {
     if (length === 0) {
       return "";
     }
+    var phrase = "";
+    var comma = prev ? "," : "";
     switch (mode) {
     case MODE_HEX:
-      return subhex(chars, index, length);
+      phrase = comma + utils.charsToHex(chars, index, length);
       break;
     case MODE_DEC:
-      return subdec(chars, index, length, prev);
+      if(prev){
+        return "," + utils.charsToDec(chars, index, length);
+      }
+      phrase = comma + utils.charsToDec(chars, index, length);
       break;
     case MODE_UNICODE:
-      return subunicode(chars, index, length);
+      phrase = comma + utils.charsToUnicode(chars, index, length);
       break;
     case MODE_ASCII:
     default:
-      return subascii(chars, index, length);
+    phrase = utils.charsToAsciiHtml(chars, index, length);
       break;
     }
-  }
-  var subascii = function(chars, index, length) {
-    var ctrlChars = [];
-    ctrlChars[0] = "NUL";
-    ctrlChars[1] = "SOH";
-    ctrlChars[2] = "STX";
-    ctrlChars[3] = "ETX";
-    ctrlChars[4] = "EOT";
-    ctrlChars[5] = "ENQ";
-    ctrlChars[6] = "ACK";
-    ctrlChars[7] = "BEL";
-    ctrlChars[8] = "BS";
-    ctrlChars[9] = "TAB";
-    ctrlChars[10] = "LF";
-    ctrlChars[11] = "VT";
-    ctrlChars[12] = "FF";
-    ctrlChars[13] = "CR";
-    ctrlChars[14] = "SO";
-    ctrlChars[15] = "SI";
-    ctrlChars[16] = "DLE";
-    ctrlChars[17] = "DC1";
-    ctrlChars[18] = "DC2";
-    ctrlChars[19] = "DC3";
-    ctrlChars[20] = "DC4";
-    ctrlChars[21] = "NAK";
-    ctrlChars[22] = "SYN";
-    ctrlChars[23] = "ETB";
-    ctrlChars[24] = "CAN";
-    ctrlChars[25] = "EM";
-    ctrlChars[26] = "SUB";
-    ctrlChars[27] = "ESC";
-    ctrlChars[28] = "FS";
-    ctrlChars[29] = "GS";
-    ctrlChars[30] = "RS";
-    ctrlChars[31] = "US";
-    ctrlChars[127] = "DEL";
-    var html = "";
-    var char, ctrl;
-    var end = index + length;
-    for (var i = index; i < end; i += 1) {
-      char = chars[i];
-      if (char < 32 || char === 127) {
-        /* control characters */
-        html += '<span class="' + style.CLASS_CTRL + '">' + ctrlChars[char] + '</span>';
-      } else if (char > 127) {
-        /* non-ASCII */
-        ctrl = char.toString(16).toUpperCase();
-        if (ctrl.length % 2 !== 0) {
-          ctrl = "0" + ctrl;
-        }
-        html += '<span class="' + style.CLASS_CTRL + '">' + '\\x' + ctrl + '</span>';
-      } else {
-        /* printing ASCII, 32 <= char <= 126 */
-        switch (char) {
-        case 32:
-          html += '&nbsp;';
-          break;
-        case 34:
-          html += '&#34;';
-          break;
-        case 38:
-          html += '&#38;';
-          break;
-        case 39:
-          html += '&#39;';
-          break;
-        case 60:
-          html += '&#60;';
-          break;
-        case 62:
-          html += '&#62;';
-          break;
-        default:
-          html += String.fromCharCode(char);
-          break;
-        }
-      }
-    }
-    return html;
-  }
-  var subhex = function(chars, index, length) {
-    var html = "";
-    var char;
-    var end = index + length;
-    for (var i = index; i < end; i += 1) {
-      char = chars[i].toString(16).toUpperCase();
-      if (char.length % 2 !== 0) {
-        char = "0" + char;
-      }
-      html += '\\x' + char;
-    }
-    return html;
-  }
-  var subunicode = function(chars, index, length) {
-    var html = "";
-    var char;
-    var end = index + length;
-    for (var i = index; i < end; i += 1) {
-      char = chars[i].toString(16).toUpperCase();
-      if (char.length % 2 !== 0) {
-        char = "0" + char;
-      }
-      html += '\\u' + char;
-    }
-    return html;
-  }
-  var subdec = function(chars, index, length, prev) {
-    var html = "";
-    var char;
-    var end = index + length;
-    if(prev === true){
-      for (var i = index; i < end; i += 1) {
-        html += "," + chars[i];
-      }
-    }else{
-      html += chars[index];
-      for (var i = index + 1; i < end; i += 1) {
-        html += "," + chars[i];
-      }
-    }
-    return html;
+    return phrase;
   }
 }

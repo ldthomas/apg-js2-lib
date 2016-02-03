@@ -56,6 +56,7 @@ module.exports = function() {
     this.nomatch = 0;
     this.total = 0;
   }
+  /* Zero out all stats */
   var clear = function() {
     stats.length = 0;
     totals = new emptyStat();
@@ -117,7 +118,7 @@ module.exports = function() {
       break;
     }
   }
-  /* helper for displayHtml() */
+  /* helper for toHtml() */
   var displayRow = function(name, stat){
     var html = '';
     html += '<tr>';
@@ -146,7 +147,7 @@ module.exports = function() {
     html += displayRow("BKN", stats[id.BKN]);
     return html;
   }
-  /* helper for displayHtml() */
+  /* helper for toHtml() */
   var displayRules = function() {
     var html = "";
     html += '<tr><th></th><th></th><th></th><th></th><th></th></tr>\n';
@@ -217,7 +218,7 @@ module.exports = function() {
   this.toHtml = function(type, caption) {
     var display = displayOpsOnly;
     var html = "";
-    html += '<table class="'+style.CLASS_LEFT0TABLE+'">\n';
+    html += '<table class="'+style.CLASS_RIGHT_TABLE+'">\n';
     if (typeof (caption) === "string") {
       html += '<caption>' + caption + '</caption>\n';
     }
