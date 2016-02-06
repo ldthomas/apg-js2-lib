@@ -92,6 +92,8 @@ module.exports = function() {
       operatorFilter[id.BKR] = set;
       operatorFilter[id.BKA] = set;
       operatorFilter[id.BKN] = set;
+      operatorFilter[id.ABG] = set;
+      operatorFilter[id.AEN] = set;
     }
     var all, items = 0;
     for ( var name in that.filter.operators) {
@@ -144,6 +146,10 @@ module.exports = function() {
             operatorFilter[id.BKA] = true;
           } else if (upper === 'BKN') {
             operatorFilter[id.BKN] = true;
+          } else if (upper === 'ABG') {
+            operatorFilter[id.ABG] = true;
+          } else if (upper === 'AEN') {
+            operatorFilter[id.AEN] = true;
           } else {
             throw new Error(thisFileName + "initOpratorFilter: '" + name + "' not a valid operator name."
                 + " Must be <all>, <none>, alt, cat, rep, tls, tbs, trg, and, not, bkr, bka or bkn");
@@ -390,7 +396,7 @@ module.exports = function() {
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH + '">&uarr;M</span> phrase matched<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_EMPTY + '">&uarr;E</span> empty phrase matched<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_NOMATCH + '">&uarr;N</span> phrase not matched<br>\n';
-    footer += 'operator&nbsp;-&nbsp;ALT, CAT, REP, RNM, TRG, TLS, TBS<sup>&dagger;</sup>, UDT, AND, NOT, BKA, BKN, BKR<sup>&Dagger;</sup><br>\n';
+    footer += 'operator&nbsp;-&nbsp;ALT, CAT, REP, RNM, TRG, TLS, TBS<sup>&dagger;</sup>, UDT, AND, NOT, BKA, BKN, BKR, ABG, AEN<sup>&Dagger;</sup><br>\n';
     footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE + ' characters of the phrase being matched<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH
     + '">matched characters</span><br>\n';
@@ -424,6 +430,8 @@ module.exports = function() {
     footer += 'BKA - positive look behind<br>\n';
     footer += 'BKN - negative look behind<br>\n';
     footer += 'BKR - back reference<br>\n';
+    footer += 'ABG - anchor - begin of input string<br>\n';
+    footer += 'AEN - anchor - end of input string<br>\n';
     footer += '</p>\n';
     /* close the page */
     footer += '</body>\n';

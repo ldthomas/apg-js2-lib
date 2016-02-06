@@ -829,6 +829,18 @@ module.exports = function() {
       }
     }
   };
+  var opABG = function(opIndex, phraseIndex, sysData) {
+    var op = opcodes[opIndex];
+    sysData.state = id.NOMATCH;
+    sysData.phraseLength = 0;
+    sysData.state = (phraseIndex === 0) ? id.EMPTY : id.NOMATCH;
+  };
+  var opAEN = function(opIndex, phraseIndex, sysData) {
+    var op = opcodes[opIndex];
+    sysData.state = id.NOMATCH;
+    sysData.phraseLength = 0;
+    sysData.state = (phraseIndex === chars.length) ? id.EMPTY : id.NOMATCH;
+  };
   // The `TBS` operator<br>
   // Matches its pre-defined phrase against the input string.
   // All characters must match exactly.
@@ -1273,6 +1285,12 @@ module.exports = function() {
       case id.BKN:
         opBKN(opIndex, phraseIndex, sysData);
         break;
+      case id.ABG:
+        opABG(opIndex, phraseIndex, sysData);
+        break;
+      case id.AEN:
+        opAEN(opIndex, phraseIndex, sysData);
+        break;
       default:
         ret = false;
         break;
@@ -1317,6 +1335,12 @@ module.exports = function() {
         break;
       case id.BKN:
         opBKN(opIndex, phraseIndex, sysData);
+        break;
+      case id.ABG:
+        opABG(opIndex, phraseIndex, sysData);
+        break;
+      case id.AEN:
+        opAEN(opIndex, phraseIndex, sysData);
         break;
       default:
         ret = false;

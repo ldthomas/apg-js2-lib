@@ -315,6 +315,12 @@ exports.opcodeToString = function(type) {
   case id.BKN:
     ret = 'BKN';
     break;
+  case id.ABG:
+    ret = 'ABG';
+    break;
+  case id.AEN:
+    ret = 'AEN';
+    break;
   }
   return ret;
 };
