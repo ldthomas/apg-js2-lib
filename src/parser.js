@@ -34,7 +34,7 @@ module.exports = function() {
   var maxMatched = 0;
   var limitTreeDepth = Infinity;
   var limitNodeHits = Infinity;
-  var parentFrameMode = true;
+//  var parentFrameMode = true;
   // Evaluates any given rule. This can be called from the syntax callback
   // functions to evaluate any rule in the grammar's rule list. Great caution
   // should be used. Use of this function will alter the language that the
@@ -98,23 +98,60 @@ module.exports = function() {
     syntaxData = null;
     opcodes = null;
   };
-  // Called to create and initialize a back reference object.
-  // Holds the matched phrases for rules and UDTs that have back references in the grammar.
-  var backrefInit = function() {
-    var obj = {};
-    rules.forEach(function(rule) {
-      if (rule.isBkr) {
-        obj[rule.lower] = null;
-      }
-    });
-    if (udts.length > 0) {
-      udts.forEach(function(udt) {
-        if (udt.isBkr) {
-          obj[udt.lower] = null;
+  // Object for maintaining a stack of back reference frames
+  var backRef = function(){
+    var stack = [];
+    var init = function(){
+      var obj = {};
+      rules.forEach(function(rule) {
+        if (rule.isBkr) {
+          obj[rule.lower] = null;
         }
       });
+      if (udts.length > 0) {
+        udts.forEach(function(udt) {
+          if (udt.isBkr) {
+            obj[udt.lower] = null;
+          }
+        });
+      }
+      stack.push(obj);
     }
-    return obj;
+    var copy = function(){
+      var top = stack[stack.length - 1];
+      var obj = {};
+      for(var name in top){
+        obj[name] = top[name];
+      }
+      return obj;
+    }
+    this.push = function(){
+      stack.push(copy());
+    }
+    this.pop = function(length){
+      if(!length){
+        length = stack.length -1;
+      }
+      if(length < 1 || length > stack.length){
+        throw new Error(thisFileName + "backRef.pop(): bad length: " + length);
+      }
+      stack.length = length;
+      return stack[stack.length - 1];
+    }
+    this.length = function(){
+      return stack.length;
+    }
+    this.savePhrase = function(name, index, length){
+      stack[stack.length - 1][name] = {
+          phraseIndex : index,
+          phraseLength : length
+        }
+    }
+    this.getPhrase = function(name){
+      return stack[stack.length - 1][name];
+    }
+    /* constructor */
+    init();
   }
   // The system data structure that relays system information to and from the rule and UDT callback functions.
   // - *state* - the state of the parser (see the `identifiers` object in
@@ -135,8 +172,8 @@ module.exports = function() {
     this.state = id.ACTIVE;
     this.phraseLength = 0;
     this.lookAround = lookAround[lookAround.length -1];
-    this.uFrame = backrefInit();
-    this.pFrame = backrefInit();
+    this.uFrame = new backRef();
+    this.pFrame = new backRef();
     this.evaluateRule = evaluateRule;
     this.evaluateUdt = evaluateUdt;
     /* refresh the parser state for the next operation */
@@ -469,6 +506,8 @@ module.exports = function() {
   var opCAT = function(opIndex, phraseIndex, sysData) {
     var op, success, astLength, catCharIndex, catPhrase;
     op = opcodes[opIndex];
+    var ulen = sysData.uFrame.length();
+    var plen = sysData.pFrame.length();
     if (_this.ast) {
       astLength = _this.ast.getLength();
     }
@@ -491,6 +530,8 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
+      sysData.uFrame.pop(ulen);
+      sysData.pFrame.pop(plen);
       if (_this.ast) {
         _this.ast.setLength(astLength);
       }
@@ -507,6 +548,8 @@ module.exports = function() {
     repCharIndex = phraseIndex;
     repPhrase = 0;
     repCount = 0;
+    var ulen = sysData.uFrame.length();
+    var plen = sysData.pFrame.length();
     if (_this.ast) {
       astLength = _this.ast.getLength();
     }
@@ -543,6 +586,8 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
+      sysData.uFrame.pop(ulen);
+      sysData.pFrame.pop(plen);
       if (_this.ast) {
         _this.ast.setLength(astLength);
       }
@@ -594,14 +639,10 @@ module.exports = function() {
   // See [`ast.js`](./ast.html) for usage.
   var opRNM = function(opIndex, phraseIndex, sysData) {
     var op, rule, callback, astLength, astDefined, downIndex, savedOpcodes;
-    var frame, saveFrame;
+    var ulen, plen, saveFrame;
     op = opcodes[opIndex];
     rule = rules[op.index];
     callback = ruleCallbacks[op.index];
-    /* begin backrefs */
-    saveFrame = sysData.pFrame;
-    sysData.pFrame = backrefInit();
-    /* begin backrefs */
     var notLookAround = !inLookAround();
     if (notLookAround) {
       /* begin AST - note: ignore AST in lookaround */
@@ -611,6 +652,14 @@ module.exports = function() {
         downIndex = _this.ast.down(op.index, rules[op.index].name);
       }
       /* begin AST */
+      /* begin backrefs */
+      ulen = sysData.uFrame.length();
+      plen = sysData.pFrame.length();
+      sysData.uFrame.push();
+      sysData.pFrame.push();
+      saveFrame = sysData.pFrame;
+      sysData.pFrame = new backRef();
+      /* begin backrefs */
     }
 
     if (callback === null) {
@@ -648,22 +697,21 @@ module.exports = function() {
         }
       }
       /* end AST */
-    }
-    /* end backref */
-    sysData.pFrame = saveFrame;
-    if (rules[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
-      /* save phrase on both the parent and universal frames */
-      /* BKR operator will decide which to use later */
-      sysData.pFrame[rules[op.index].lower] = {
-        phraseIndex : phraseIndex,
-        phraseLength : sysData.phraseLength
-      }
-      sysData.uFrame[rules[op.index].lower] = {
-          phraseIndex : phraseIndex,
-          phraseLength : sysData.phraseLength
+      /* end backref */
+      sysData.pFrame = saveFrame;
+      if (sysData.state === id.NOMATCH) {
+        sysData.uFrame.pop(ulen);
+        sysData.pFrame.pop(plen);
+      }else{
+        if (rules[op.index].isBkr) {
+          /* save phrase on both the parent and universal frames */
+          /* BKR operator will decide which to use later */
+          sysData.pFrame.savePhrase(rules[op.index].lower, phraseIndex, sysData.phraseLength);
+          sysData.uFrame.savePhrase(rules[op.index].lower, phraseIndex, sysData.phraseLength);
         }
+      }
+      /* end backref */
     }
-    /* end backref */
   };
   // Validate the callback function's return sysData.
   // It's the user's responsibility to get it right
@@ -742,19 +790,13 @@ module.exports = function() {
         }
       }
       /* end AST */
-    }
-    /* back reference */
-    if (udts[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
-      /* save phrase on both the parent and universal frames */
-      /* BKR operator will decide which to use later */
-      sysData.pFrame[udt[op.index].lower] = {
-        phraseIndex : phraseIndex,
-        phraseLength : sysData.phraseLength
+      /* back reference */
+      if (udts[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
+        /* save phrase on both the parent and universal frames */
+        /* BKR operator will decide which to use later */
+        sysData.pFrame.savePhrase(udt[op.index].lower, phraseIndex, sysData.phraseLength);
+        sysData.uFrame.savePhrase(udt[op.index].lower, phraseIndex, sysData.phraseLength);
       }
-      sysData.uFrame[udt[op.index].lower] = {
-          phraseIndex : phraseIndex,
-          phraseLength : sysData.phraseLength
-        }
     }
   };
   // The `AND` operator<br>
@@ -913,7 +955,7 @@ module.exports = function() {
     } else {
       lower = udts[op.index - rules.length].lower;
     }
-    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame[lower]: sysData.uFrame[lower];
+    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame.getPhrase(lower): sysData.uFrame.getPhrase(lower);
     insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true: false;
     if (frame === null) {
       return;
@@ -1012,7 +1054,10 @@ module.exports = function() {
   // Works just like `CAT` except it parses right to left from the first character preceeding `phraseIndex`.
   var opCATBehind = function(opIndex, phraseIndex, sysData) {
     var op, success, astLength, catCharIndex, catPhrase, catMatched;
+    var ulen, plen;
     op = opcodes[opIndex];
+    ulen = sysData.uFrame.length();
+    plen = sysData.pFrame.length();
     if (_this.ast) {
       astLength = _this.ast.getLength();
     }
@@ -1036,6 +1081,8 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
+      sysData.uFrame.pop(ulen);
+      sysData.pFrame.pop(plen);
       if (_this.ast) {
         _this.ast.setLength(astLength);
       }
@@ -1045,10 +1092,13 @@ module.exports = function() {
   // Works just like `REP` except it parses right to left from the first character preceeding `phraseIndex`.
   var opREPBehind = function(opIndex, phraseIndex, sysData) {
     var op, astLength, repCharIndex, repPhrase, repCount;
+    var ulen, plen;
     op = opcodes[opIndex];
     repCharIndex = phraseIndex;
     repPhrase = 0;
     repCount = 0;
+    ulen = sysData.uFrame.length();
+    plen = sysData.pFrame.length();
     if (_this.ast) {
       astLength = _this.ast.getLength();
     }
@@ -1085,6 +1135,8 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
+      sysData.uFrame.pop(ulen);
+      sysData.pFrame.pop(plen);
       if (_this.ast) {
         _this.ast.setLength(astLength);
       }
@@ -1167,7 +1219,7 @@ module.exports = function() {
     } else {
       lower = udts[op.index - rules.length].lower;
     }
-    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame[lower]: sysData.uFrame[lower];
+    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame.getPhrase(lower): sysData.uFrame.getPhrase(lower);
     insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true: false;
     if (frame === null) {
       return;
