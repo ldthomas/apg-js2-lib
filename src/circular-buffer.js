@@ -1,4 +1,4 @@
-// This module is a acts as a "circular buffer". It is used to keep track
+// This module acts as a "circular buffer". It is used to keep track
 // only the last N records in an array of records. If more than N records
 // are saved, each additional record overwrites the previously oldest record.
 // This module deals only with the record indexes and does not save

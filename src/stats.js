@@ -19,7 +19,7 @@ module.exports = function() {
   var udtStats = [];
   this.statsObject = "statsObject";
   var nameId = 'stats';
-  // `Array.sort()` callback function for sorting `RNM` and `UDT` operators alphabetically by name.
+  /* `Array.sort()` callback function for sorting `RNM` and `UDT` operators alphabetically by name. */
   var sortAlpha = function(lhs, rhs) {
     if (lhs.lower < rhs.lower) {
       return -1;
@@ -29,7 +29,7 @@ module.exports = function() {
     }
     return 0;
   }
-  // `Array.sort()` callback function for sorting `RNM` and `UDT` operators by hit count.
+  /* `Array.sort()` callback function for sorting `RNM` and `UDT` operators by hit count. */
   var sortHits = function(lhs, rhs) {
     if (lhs.total < rhs.total) {
       return 1;
@@ -39,8 +39,8 @@ module.exports = function() {
     }
     return sortAlpha(lhs, rhs);
   }
-  // `Array.sort()` callback function for sorting `RNM` and `UDT` operators by index
-  // (in the order in which they appear in the SABNF grammar).
+  /* `Array.sort()` callback function for sorting `RNM` and `UDT` operators by index */
+  /* (in the order in which they appear in the SABNF grammar). */
   var sortIndex = function(lhs, rhs) {
     if (lhs.index < rhs.index) {
       return -1;
@@ -145,6 +145,7 @@ module.exports = function() {
     html += displayRow("BKR", stats[id.BKR]);
     html += displayRow("BKA", stats[id.BKA]);
     html += displayRow("BKN", stats[id.BKN]);
+    html += displayRow("totals", totals);
     return html;
   }
   /* helper for toHtml() */
@@ -194,8 +195,8 @@ module.exports = function() {
     udts = inputUdts;
     clear();
   }
-  // This function is the main interaction with the parser.
-  // The parser calls it after each node has been traversed.
+  /* This function is the main interaction with the parser. */
+  /* The parser calls it after each node has been traversed. */
   this.collect = function(op, result) {
     incStat(totals, result.state, result.phraseLength);
     incStat(stats[op.type], result.state, result.phraseLength);
@@ -213,8 +214,6 @@ module.exports = function() {
   //   - "hits" - additionally, display the hit counts for the individual `RNM` and `UDT` operators by hit count.
   //   - "alpha" - additionally, display the hit counts for the individual `RNM` and `UDT` operators by name alphabetically.
   // - *caption* - optional caption for the table
-  // - *classname* - default is "apg-table" but maybe someday there will be a user who
-  // really wants to use his/her own style sheet.
   this.toHtml = function(type, caption) {
     var display = displayOpsOnly;
     var html = "";

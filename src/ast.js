@@ -1,27 +1,27 @@
-// This module is used by the parser to build an Abstract Syntax Tree (`AST`).
-//
-// The `AST` is a tree of nodes, each node being related to a rule name or `UDT` name
-// in the defining SABNF grammar.
+// This module is used by the parser to build an [Abstract Syntax Tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree) (AST).
+// The AST can be thought of as a subset of the full parse tree.
+// Each node of the AST holds the phrase that was matched at the corresponding, named parse tree node.
 // It is built as the parser successfully matches phrases to the rule names
 // (`RNM` operators) and `UDT`s as it parses an input string.
-// Associated with each node is the phrase that the
-// named rule name or `UDT` matched.
-// The user controls which rule or `UDT` names to keep on the `AST`.
+// The user controls which `RNM` or `UDT` names to keep on the AST.
 // The user can also associate callback functions with some or all of the retained
-// `AST` nodes to be used to translate the node phrases. That is, associate semantic
+// AST nodes to be used to translate the node phrases. That is, associate semantic
 // actions to the matched phrases.
-// Translating the `AST` rather that attempting to apply semantic actions during
+// Translating the AST rather that attempting to apply semantic actions during
 // the parsing process, has the advantage that there is no backtracking and that the phrases
 // are known while traversing down tree as will as up.
 //
-// To identify a node to be kept on the `AST` use:<br>
-// `ast.callbacks["rulename"] = true;` (all nodes default to `false`)<br>
-// To associate a callback function with a node:<br>
-// `ast.callbacks["rulename"] = fn`<br>
-// where `ast` is an `ast.js` module object, `rulename` is any rule or `UDT` name defined by the associated grammar
+// Let `ast` be an `ast.js` object. To identify a node to be kept on the AST:
+//```
+// ast.callbacks["rulename"] = true; (all nodes default to false)
+//```
+// To associate a callback function with a node:
+//```
+// ast.callbacks["rulename"] = fn
+//```
+// `rulename` is any `RNM` or `UDT` name defined by the associated grammar
 // and `fn` is a user-written callback function.
-// 
-// (See `apg-examples` for examples of how to create an `AST`,
+// (See [`apg-examples`](https://github.com/ldthomas/apg-js2-examples/tree/master/ast) for examples of how to create an AST,
 // define the nodes and callback functions and attach it to a parser.)
 module.exports = function() {
   "use strict";
@@ -39,8 +39,7 @@ module.exports = function() {
   var records = [];
   this.callbacks = [];
   this.astObject = "astObject";
-  // Called by the parser to initialize the AST, defining the rule names, `UDT`s and the input string
-  // for this `AST`.
+  /* called by the parser to initialize the AST with the rules, UDTs and the input characters */
   this.init = function(rulesIn, udtsIn, charsIn) {
     stack.length = 0;
     records.length = 0;
@@ -76,18 +75,16 @@ module.exports = function() {
       }
     }
   }
-  // Called by the parser's `RNM` operator to see if there is an `AST` node
-  // defined for this rule name.
+  /* AST node definitions - called by the parser's `RNM` operator */
   this.ruleDefined = function(index) {
     return nodesDefined[index] === false ? false : true;
   }
-  // Called by the parser's `UDT` operator to see if there is an `AST` node
-  // defined for this `UDT` name.
+  /* AST node definitions - called by the parser's `UDT` operator */
   this.udtDefined = function(index) {
     return nodesDefined[rules.length + index] === false ? false : true;
   }
-  // Called by the parser's `RNM` and `UDT` operators to build a node record for
-  // traversing down the `AST`.
+  /* called by the parser's `RNM` & `UDT` operators */
+  /* builds a record for the downward traversal of the node */
   this.down = function(callbackIndex, name) {
     var thisIndex = records.length;
     stack.push(thisIndex);
@@ -103,8 +100,8 @@ module.exports = function() {
     });
     return thisIndex;
   };
-  // Called by the parser's `RNM` and `UDT` operators to build a node record for
-  // traversing up the `AST`.
+  /* called by the parser's `RNM` & `UDT` operators */
+  /* builds a record for the upward traversal of the node */
   this.up = function(callbackIndex, name, phraseIndex, phraseLength) {
     var thisIndex = records.length;
     var thatIndex = stack.pop();
@@ -123,13 +120,14 @@ module.exports = function() {
     records[thatIndex].phraseLength = phraseLength;
     return thisIndex;
   };
-  // Called by the user to translate the `AST`.
+  // Called by the user to translate the AST.
   // Translate means to associate or apply some semantic action to the
-  // phrases that were syntactically matched to the `AST` nodes according
+  // phrases that were syntactically matched to the AST nodes according
   // to the defining grammar.
-  //
-  // To translate a given rule or `UDT` name phrase, a node & callback function
-  // must have been defined for it. (See `apg-examples`.)
+  //```
+  // data - optional user-defined data
+  //        passed to the callback functions by the translator
+  //```
   this.translate = function(data) {
     var ret, call, callback, record;
     for (var i = 0; i < records.length; i += 1) {
@@ -149,8 +147,8 @@ module.exports = function() {
       }
     }
   }
-  // Called by the parser to reset the length of the records array.
-  // The length should be the return value of a previous call to `getLength()`.
+  /* called by the parser to reset the length of the records array */
+  /* necessary on backtracking */
   this.setLength = function(length) {
     records.length = length;
     if (length > 0) {
@@ -159,9 +157,7 @@ module.exports = function() {
       stack.length = 0;
     }
   };
-  // Called by the parser to get the length of the records array.
-  // The array length will have to be reset to this with `setLength()` on
-  // backtracking.
+  /* called by the parser to get the length of the records array */
   this.getLength = function() {
     return records.length;
   };
@@ -173,12 +169,17 @@ module.exports = function() {
     }
     return ret;
   }
-  // Generate an `XML` version of the `AST`.
+  // Generate an `XML` version of the AST.
   // Useful if you want to use a special or favorite XML parser to translate the
-  // `AST`.
-  //
-  // `mode` can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`. Defaults to `"ascii"`.
-  // Determines the format for the character code representation of the phrases.
+  // AST.
+  //```
+  // mode - the display mode of the captured phrases
+  //      - default mode is "ascii"
+  //      - can be: "ascii"
+  //                "decimal"
+  //                "hexidecimal"
+  //                "unicode"
+  //```
   this.toXml = function(mode) {
     var display = utils.charsToDec;
     var caption = "decimal integer character codes";
@@ -221,8 +222,8 @@ module.exports = function() {
     xml += '</root>\n';
     return xml;
   }
-  // Generate a JavaScript object version of the `AST`.
-  // Used by the phrase matching engine, `apg-exp`.
+  /* generate a JavaScript object version of the AST */
+  /* for the phrase-matching engine apg-exp */
   this.phrases = function() {
     var obj = {};
     var i, record;

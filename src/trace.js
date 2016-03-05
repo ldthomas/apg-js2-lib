@@ -1,6 +1,6 @@
 // This module provides a means of tracing the parser through the parse tree as it goes.
 // It is the primary debugging facility for debugging both the SABNF grammar syntax
-// and the input strings that are supposed to valid grammar sentences.
+// and the input strings that are supposed to be valid grammar sentences.
 // It is also a very informative and educational tool for understanding
 // how a parser actually operates for a given language.
 //
@@ -8,11 +8,11 @@
 // of the parser through a parse tree node. And since it traverses each node twice, once down the tree
 // and once coming back up, there are two records for each node.
 // This, obviously, has the potential of generating lots of records.
-// And since these records are normally displayed on a web page (this being JavaScript)
+// And since these records are normally displayed on a web page
 // it is important to have a means to limit the actual number of records generated to
 // probably no more that a few thousand. This is almost always enough to find any errors.
 // The problem is to get the *right* few thousand records.
-// Therefore, this module has a number of ways of limiting,or filtering, the number and type of records.
+// Therefore, this module has a number of ways of limiting and/or filtering, the number and type of records.
 // Considerable effort has been made to make this filtering of the trace output as simple
 // and intuitive as possible. In [previous versions](http://coasttocoastresearch.com/)
 // of the APG library this has admittedly not been very clean.
@@ -22,26 +22,38 @@
 // method. The parse tree nodes are all represented by APG operators. They break down into two natural groups.
 // - The `RNM` operators and `UDT` operators are named phrases.
 // These are names chosen by the writer of the SABNF grammar to represent special phrases of interest.
-// - all others, the `ALT, CAT, REP, AND, NOT, TLS, TBS & TRG` operators. These collect and concatenate various
-// intermediate phrases along the way.
+// - All others collect, concatenate and otherwise manipulate various intermediate phrases along the way.
 //
-// Therefore, there are separate means of filtering which of these operators get saved records.
-// By default, all of the `RNM` and `UDT` records are saved and none of the others are. This is often sufficient.
-// Often the problem shows up right away as a rule name phrase that should be matched but isn't.
-// To limit these records, specific rules only can be saved by naming them prior to parsing use:<br>
-// `trace.filter.rules["rulename"] = true;`<br>
-// where `trace` is the `trace.js` object and `rulename` is any rule or `UDT` name defined in the grammar.
-// This will default all rule name operators to `false` except for those specifically named.<br>
-// The special rule name `<ALL>` will turn on tracing of all rule and `UDT` names (default).<br>
-// The special rule name `<NONE>` will turn off all rule and `UDT` names.
+// There are separate means of filtering which of these operators in each of these two groups get traced.
+// Let `trace` be an instantiated `trace.js` object.
+// Prior to parsing the string, filtering the rules and UDTs can be defined as follows:
+//```
+// trace.filter.rules["rulename"] = true;
+//     /* trace rule name "rulename" */
+// trace.filter.rules["udtname"]  = true;
+//     /* trace UDT name "udtname" */
+// trace.filter.rules["<ALL>"]    = true;
+//     /* trace all rules and UDTs (the default) */
+// trace.filter.rules["<NONE>"]   = true;
+//     /* trace no rules or UDTS */
+//```
+// If any rule or UDT name other than "&lt;ALL>" or "&lt;NONE>" is specified, all other names are turned off.
+// Therefore, to be selective of rule names, a filter statement is required for each rule/UDT name desired.
 //
-// Trace records for the non-rule name operators are filtered in a similar manner. To collect records
-// for a specified few of them use:<br>
-// `trace.filter.operators["TBS"] = true`<br>
-// for example to save all `TBS` node records. Similarly,<br>
-// the special operator `<ALL>` will turn on tracing of all non-rule name operators.<br>
-// The special rule name `<NONE>` will turn off all non-rule operators (default).
-
+// Filtering of the other operators follows a similar procedure.
+//```
+// trace.filter.operators["TRG"] = true;
+//     /* trace the terminal range, TRG, operators */
+// trace.filter.operators["CAT"]  = true;
+//     /* trace the concatenations, CAT, operators */
+// trace.filter.operators["<ALL>"]    = true;
+//     /* trace all operators */
+// trace.filter.operators["<NONE>"]   = true;
+//     /* trace no operators (the default) */
+//```
+// If any operator name other than "&lt;ALL>" or "&lt;NONE>" is specified, all other names are turned off.
+// Therefore, to be selective of operator names, a filter statement is required for each name desired.
+//
 // There is, additionally, a means for limiting the total number of filtered or saved trace records.
 // See the function, `setMaxRecords(max)` below. This will result in only the last `max` records being saved. 
 // 
@@ -235,7 +247,7 @@ module.exports = function() {
   this.getMaxRecords = function() {
     return maxLines;
   }
-  // Called only by the `parser.js` object. No verification of input.
+  /* Called only by the `parser.js` object. No verification of input. */
   this.init = function(rulesIn, udtsIn, charsIn) {
     lines.length = 0;
     lineStack.length = 0;
@@ -269,7 +281,7 @@ module.exports = function() {
     }
     return ret;
   }
-  // Collect the "down" record.
+  /* Collect the "down" record. */
   this.down = function(op, state, offset, length,
       anchor, lookAround) {
     totalRecords += 1;
@@ -291,7 +303,7 @@ module.exports = function() {
       treeDepth += 1;
     }
   };
-  // Collect the "up" record.
+  /* Collect the "up" record. */
   this.up = function(op, state, offset, length,
       anchor, lookAround) {
     totalRecords += 1;
@@ -319,9 +331,9 @@ module.exports = function() {
     }
   };
   // Translate the trace records to HTML format.
-  // *modearg* - can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`.
+  // - *modearg* - can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`.
   // Determines the format of the string character code display.
-  // *caption* - optional caption for the HTML table.
+  // - *caption* - optional caption for the HTML table.
   this.toHtml = function(modearg, caption) {
     /* writes the trace records as a table in a complete html page */
     var mode = MODE_ASCII;
@@ -346,7 +358,7 @@ module.exports = function() {
     return utils.htmlToPage(this.toHtml(mode, caption), title);
   }
 
-  // From here on down, these are just helper functions for `toHtml()`.
+  /* From here on down, these are just helper functions for `toHtml()`. */
   var htmlHeader = function(mode, caption) {
     /* open the page */
     /* write the HTML5 header with table style */
@@ -438,12 +450,7 @@ module.exports = function() {
     footer += '</html>\n';
     return footer;
   }
-  // Returns the filtered records, formatted as an HTML table.
-  // - *caption* - optional caption for the HTML table
-  // - *mode* - "hex", "dec", "ascii", display string characters as
-  // hexidecimal, decimal or ascii printing characters, respectively. (default "ascii")
-  // - *classname* - default is "apg-table" but maybe someday there will be a user who
-  // really wants to use his/her own style sheet.
+  /* Returns the filtered records, formatted as an HTML table. */
   var htmlTable = function(mode) {
     if (rules === null) {
       return "";

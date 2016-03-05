@@ -2,7 +2,7 @@
 // walks the parse tree of opcodes, matching phrases from the input string as it goes.
 // The working code for all of the operators, `ALT`, `CAT`, etc. is in this module.
 /*
- * COPYRIGHT: Copyright (c) 2015 Lowell D. Thomas, all rights reserved
+ * COPYRIGHT: Copyright (c) 2016 Lowell D. Thomas, all rights reserved
  *   LICENSE: BSD-3-Clause
  *    AUTHOR: Lowell D. Thomas
  *     EMAIL: lowell@coasttocoastresearch.com
@@ -34,7 +34,6 @@ module.exports = function() {
   var maxMatched = 0;
   var limitTreeDepth = Infinity;
   var limitNodeHits = Infinity;
-//  var parentFrameMode = true;
   // Evaluates any given rule. This can be called from the syntax callback
   // functions to evaluate any rule in the grammar's rule list. Great caution
   // should be used. Use of this function will alter the language that the
@@ -79,14 +78,19 @@ module.exports = function() {
     opcodes.pop();
   };
   /* Clears this object of any/all data that has been initialized or added to it. */
-  /* Called by `parse()` on initialization, allowing this object to be re-used for multiple parsing calls. */
+  /* Called by parse() on initialization, allowing this object to be re-used for multiple parsing calls. */
   var clear = function() {
     startRule = 0;
     treeDepth = 0;
     maxTreeDepth = 0;
     nodeHits = 0;
     maxMatched = 0;
-    lookAround = [{lookAround : id.LOOKAROUND_NONE, anchor : 0, charsEnd : 0, charsLength : 0}];
+    lookAround = [ {
+      lookAround : id.LOOKAROUND_NONE,
+      anchor : 0,
+      charsEnd : 0,
+      charsLength : 0
+    } ];
     rules = null;
     udts = null;
     chars = null;
@@ -98,10 +102,10 @@ module.exports = function() {
     syntaxData = null;
     opcodes = null;
   };
-  // Object for maintaining a stack of back reference frames
-  var backRef = function(){
+  /* object for maintaining a stack of back reference frames */
+  var backRef = function() {
     var stack = [];
-    var init = function(){
+    var init = function() {
       var obj = {};
       rules.forEach(function(rule) {
         if (rule.isBkr) {
@@ -117,48 +121,48 @@ module.exports = function() {
       }
       stack.push(obj);
     }
-    var copy = function(){
+    var copy = function() {
       var top = stack[stack.length - 1];
       var obj = {};
-      for(var name in top){
+      for ( var name in top) {
         obj[name] = top[name];
       }
       return obj;
     }
-    this.push = function(){
+    this.push = function() {
       stack.push(copy());
     }
-    this.pop = function(length){
-      if(!length){
-        length = stack.length -1;
+    this.pop = function(length) {
+      if (!length) {
+        length = stack.length - 1;
       }
-      if(length < 1 || length > stack.length){
+      if (length < 1 || length > stack.length) {
         throw new Error(thisFileName + "backRef.pop(): bad length: " + length);
       }
       stack.length = length;
       return stack[stack.length - 1];
     }
-    this.length = function(){
+    this.length = function() {
       return stack.length;
     }
-    this.savePhrase = function(name, index, length){
+    this.savePhrase = function(name, index, length) {
       stack[stack.length - 1][name] = {
-          phraseIndex : index,
-          phraseLength : length
-        }
+        phraseIndex : index,
+        phraseLength : length
+      }
     }
-    this.getPhrase = function(name){
+    this.getPhrase = function(name) {
       return stack[stack.length - 1][name];
     }
     /* constructor */
     init();
   }
   // The system data structure that relays system information to and from the rule and UDT callback functions.
-  // - *state* - the state of the parser (see the `identifiers` object in
+  // - *state* - the state of the parser, ACTIVE, MATCH, EMPTY or NOMATCH (see the `identifiers` object in
   // [`apg-lib`](https://github.com/ldthomas/apg-js2-lib))
-  // - *phraseLength* - the number of characters matched if the state is `MATCHED` or `EMPTY`
+  // - *phraseLength* - the number of characters matched if the state is MATCHED or EMPTY
   // - *lookaround* - the top of the stack holds the current look around state,
-  // LOOKAROUND_NONE, LOOKAROUND_AHEAD or LOOKAROUND_BEHIND, 
+  // LOOKAROUND_NONE, LOOKAROUND_AHEAD or LOOKAROUND_BEHIND,
   // - *uFrame* - the "universal" back reference frame.
   // Holds the last matched phrase for each of the back referenced rules and UDTs.
   // - *pFrame* - the stack of "parent" back reference frames.
@@ -171,29 +175,31 @@ module.exports = function() {
     var _this = this;
     this.state = id.ACTIVE;
     this.phraseLength = 0;
-    this.lookAround = lookAround[lookAround.length -1];
+    this.lookAround = lookAround[lookAround.length - 1];
     this.uFrame = new backRef();
     this.pFrame = new backRef();
     this.evaluateRule = evaluateRule;
     this.evaluateUdt = evaluateUdt;
     /* refresh the parser state for the next operation */
-    this.refresh = function(){
+    this.refresh = function() {
       _this.state = id.ACTIVE;
       _this.phraseLength = 0;
-      _this.lookAround = lookAround[lookAround.length -1];
+      _this.lookAround = lookAround[lookAround.length - 1];
     }
   }
-  /* some around helper functions */
+  /* some look around helper functions */
   var lookAroundValue = function() {
     return lookAround[lookAround.length - 1];
   }
+  /* return true if parser is in look around (ahead or behind) state */
   var inLookAround = function() {
     return (lookAround.length > 1);
   }
+  /* return true if parser is in look behind state */
   var inLookBehind = function() {
     return lookAround[lookAround.length - 1].lookAround === id.LOOKAROUND_BEHIND ? true : false;
   }
-  /* called by `parse()` to initialize the AST object, if one has been defined */
+  /* called by parse() to initialize the AST object, if one has been defined */
   var initializeAst = function() {
     var functionName = thisFileName + "initializeAst(): ";
     while (true) {
@@ -213,7 +219,7 @@ module.exports = function() {
       _this.ast.init(rules, udts, chars);
     }
   }
-  /* called by `parse()` to initialize the trace object, if one has been defined */
+  /* called by parse() to initialize the trace object, if one has been defined */
   var initializeTrace = function() {
     var functionName = thisFileName + "initializeTrace(): ";
     while (true) {
@@ -234,7 +240,7 @@ module.exports = function() {
     }
 
   }
-  /* called by `parse()` to initialize the statistics object, if one has been defined */
+  /* called by parse() to initialize the statistics object, if one has been defined */
   var initializeStats = function() {
     var functionName = thisFileName + "initializeStats(): ";
     while (true) {
@@ -254,8 +260,8 @@ module.exports = function() {
       _this.stats.init(rules, udts);
     }
   }
-  /* called by `parse()` to initialize the rules & udts from the grammar object */
-  /* (the grammar object generated previously by `apg`) */
+  /* called by parse() to initialize the rules & udts from the grammar object */
+  /* (the grammar object generated previously by apg) */
   var initializeGrammar = function(grammar) {
     var functionName = thisFileName + "initializeGrammar(): ";
     if (grammar === undefined || grammar === null) {
@@ -267,7 +273,7 @@ module.exports = function() {
     rules = grammar.rules;
     udts = grammar.udts;
   }
-  /* called by `parse()` to initialize the start rule */
+  /* called by parse() to initialize the start rule */
   var initializeStartRule = function(startRule) {
     var functionName = thisFileName + "initializeStartRule(): ";
     var start = null;
@@ -292,7 +298,7 @@ module.exports = function() {
     }
     return start;
   }
-  /* called by `parse()` to initialize the array of characters codes representing the input string */
+  /* called by parse() to initialize the array of characters codes representing the input string */
   var initializeInputChars = function(input, beg, len) {
     var functionName = thisFileName + "initializeInputChars(): ";
     /* varify and normalize input */
@@ -315,9 +321,9 @@ module.exports = function() {
     /* verify and normalize beginning index */
     if (typeof (beg) !== "number") {
       beg = 0;
-    }else{
+    } else {
       beg = Math.floor(beg);
-      if (beg < 0 || beg >= input.length) {
+      if (beg < 0 || beg > input.length) {
         throw new Error(functionName + "input beginning index out of range: " + beg);
       }
     }
@@ -335,7 +341,7 @@ module.exports = function() {
     charsLength = len;
     charsEnd = charsBegin + charsLength;
   }
-  /* called by `parse()` to initialize the user-written, syntax callback functions, if any */
+  /* called by parse() to initialize the user-written, syntax callback functions, if any */
   var initializeCallbacks = function() {
     var functionName = thisFileName + "initializeCallbacks(): ";
     var i;
@@ -382,8 +388,13 @@ module.exports = function() {
     }
   }
   // Set the maximum parse tree depth allowed. The default is `Infinity`.
-  // A limit is not normally needed, but can be used to protect against a pathological grammar exceeding
-  // the call stack depth.
+  // A limit is not normally needed, but can be used to protect against an
+  // exponentual or "catastrophically backtracking" grammar.
+  //<ul>
+  //<li>
+  // depth - max allowed parse tree depth. An exception is thrown if exceeded.
+  //</li>
+  //</ul>
   this.setMaxTreeDepth = function(depth) {
     if (typeof (depth) !== "number") {
       throw new Error("parser: max tree depth must be integer > 0: " + depth);
@@ -393,17 +404,23 @@ module.exports = function() {
       throw new Error("parser: max tree depth must be integer > 0: " + depth);
     }
   }
-  // Set the maximum number of node hit (opcode function calls) allowed.
+  // Set the maximum number of node hits (parser unit steps or opcode function calls) allowed.
   // The default is `Infinity`.
-  // A limit is not normally needed, but can be used to protect against
-  // a runaway exponential or pathological grammar.
-  this.setMaxNodeHits = function(depth) {
-    if (typeof (depth) !== "number") {
-      throw new Error("parser: max node hits must be integer > 0: " + depth);
+  // A limit is not normally needed, but can be used to protect against an
+  // exponentual or "catastrophically backtracking" grammar.
+  //<ul>
+  //<li>
+  // hits - maximum number of node hits or parser unit steps allowed.
+  // An exception thrown if exceeded.
+  //</li>
+  //</ul>
+  this.setMaxNodeHits = function(hits) {
+    if (typeof (hits) !== "number") {
+      throw new Error("parser: max node hits must be integer > 0: " + hits);
     }
-    limitNodeHits = Math.floor(depth);
+    limitNodeHits = Math.floor(hits);
     if (limitNodeHits <= 0) {
-      throw new Error("parser: max node hits must be integer > 0: " + depth);
+      throw new Error("parser: max node hits must be integer > 0: " + hits);
     }
   }
   // This is the main function, called to parse an input string.
@@ -426,8 +443,11 @@ module.exports = function() {
     return privateParse(grammar, startRule, callbackData);
   }
   // This form allows parsing of a sub-string of the full input string.
-  // It treats `inputChars[inputIndex]` as the first character to match and
-  // `inputChars[inputIndex + inputLength - 1]` as the last.
+  // <ul>
+  // <li>*inputIndex* - index of the first character in the sub-string</li>
+  // <li>*inputLength* - length of the sub-string</li>
+  // </ul>
+  // All other parameters as for the above function `parse()`.
   this.parseSubstring = function(grammar, startRule, inputChars, inputIndex, inputLength, callbackData) {
     clear();
     initializeInputChars(inputChars, inputIndex, inputLength);
@@ -487,7 +507,7 @@ module.exports = function() {
     };
   };
 
-  // The `ALT` operator<br>
+  // The `ALT` operator.<br>
   // Executes its child nodes, from left to right, until it finds a match.
   // Fails if *all* of its child nodes fail.
   var opALT = function(opIndex, phraseIndex, sysData) {
@@ -499,7 +519,7 @@ module.exports = function() {
       }
     }
   };
-  // The `CAT` operator<br>
+  // The `CAT` operator.<br>
   // Executes all of its child nodes, from left to right,
   // concatenating the matched phrases.
   // Fails if *any* child nodes fail.
@@ -519,7 +539,7 @@ module.exports = function() {
       if (sysData.state === id.NOMATCH) {
         success = false;
         break;
-      }else{
+      } else {
         catCharIndex += sysData.phraseLength;
         catPhrase += sysData.phraseLength;
       }
@@ -530,6 +550,7 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
+      /* reset the back referencing frames on failure */
       sysData.uFrame.pop(ulen);
       sysData.pFrame.pop(plen);
       if (_this.ast) {
@@ -537,11 +558,11 @@ module.exports = function() {
       }
     }
   };
-  // The `REP` operator<br>
+  // The `REP` operator.<br>
   // Repeatedly executes its single child node,
   // concatenating each of the matched phrases found.
   // The number of repetitions executed and its final sysData depends
-  // on its min & max repetition values.
+  // on its `min` & `max` repetition values.
   var opREP = function(opIndex, phraseIndex, sysData) {
     var op, astLength, repCharIndex, repPhrase, repCount;
     op = opcodes[opIndex];
@@ -586,6 +607,7 @@ module.exports = function() {
     } else {
       sysData.state = id.NOMATCH;
       sysData.phraseLength = 0;
+      /* reset the back referencing frames on failure */
       sysData.uFrame.pop(ulen);
       sysData.pFrame.pop(plen);
       if (_this.ast) {
@@ -593,9 +615,9 @@ module.exports = function() {
       }
     }
   };
-  // Validate the callback function's return sysData.
-  // It's the user's responsibility to get it right
-  // but it is `RNM`'s responsibility to fail if the user doesn't.
+  // Validate the callback function's returned sysData values.
+  // It's the user's responsibility to get them right
+  // but `RNM` fails if not.
   var validateRnmCallbackResult = function(rule, sysData, charsLeft, down) {
     if (sysData.phraseLength > charsLeft) {
       var str = thisFileName + "opRNM(" + rule.name + "): callback function error: "
@@ -627,15 +649,11 @@ module.exports = function() {
       break;
     }
   }
-  // The `RNM` operator<br>
-  // If there is no callback function defined for this rule and no `AST` object
-  // defined
-  // this operator will simply act as a root node for a sub-parse tree and
-  // return the matched phrase to its parent.
-  // However, its larger responsibility is calling the user's callback functions
-  // and the collection of `AST` nodes.
-  // Note that the `AST` is a separate object, but `RNM` calls its functions to
-  // create its nodes.
+  // The `RNM` operator.<br>
+  // This operator will acts as a root node for a parse tree branch below and
+  // returns the matched phrase to its parent.
+  // However, its larger responsibility is handling user-defined callback functions, back references and `AST` nodes.
+  // Note that the `AST` is a separate object, but `RNM` calls its functions to create its nodes.
   // See [`ast.js`](./ast.html) for usage.
   var opRNM = function(opIndex, phraseIndex, sysData) {
     var op, rule, callback, astLength, astDefined, downIndex, savedOpcodes;
@@ -644,24 +662,21 @@ module.exports = function() {
     rule = rules[op.index];
     callback = ruleCallbacks[op.index];
     var notLookAround = !inLookAround();
+    /* ignore AST and back references in lookaround */
     if (notLookAround) {
-      /* begin AST - note: ignore AST in lookaround */
+      /* begin AST and back references */
       astDefined = _this.ast && _this.ast.ruleDefined(op.index);
       if (astDefined) {
         astLength = _this.ast.getLength();
         downIndex = _this.ast.down(op.index, rules[op.index].name);
       }
-      /* begin AST */
-      /* begin backrefs */
       ulen = sysData.uFrame.length();
       plen = sysData.pFrame.length();
       sysData.uFrame.push();
       sysData.pFrame.push();
       saveFrame = sysData.pFrame;
       sysData.pFrame = new backRef();
-      /* begin backrefs */
     }
-
     if (callback === null) {
       /* no callback - just execute the rule */
       savedOpcodes = opcodes;
@@ -669,24 +684,19 @@ module.exports = function() {
       opExecute(0, phraseIndex, sysData);
       opcodes = savedOpcodes;
     } else {
-      /* begin callback */
+      /* call user's callback */
       var charsLeft = charsEnd - phraseIndex;
       callback(sysData, chars, phraseIndex, syntaxData);
       validateRnmCallbackResult(rule, sysData, charsLeft, true);
-      /* begin callback */
       if (sysData.state === id.ACTIVE) {
         savedOpcodes = opcodes;
         opcodes = rule.opcodes;
         opExecute(0, phraseIndex, sysData);
         opcodes = savedOpcodes;
-        /* end callback */
         callback(sysData, chars, phraseIndex, syntaxData);
         validateRnmCallbackResult(rule, sysData, charsLeft, false);
-        /* end callback */
-      }
-      /* implied else clause: just accept the callback sysData - RNM acting as UDT */
+      }/* implied else clause: just accept the callback sysData - RNM acting as UDT */
     }
-
     if (notLookAround) {
       /* end AST */
       if (astDefined) {
@@ -696,13 +706,12 @@ module.exports = function() {
           _this.ast.up(op.index, rules[op.index].name, phraseIndex, sysData.phraseLength);
         }
       }
-      /* end AST */
-      /* end backref */
+      /* end back reference */
       sysData.pFrame = saveFrame;
       if (sysData.state === id.NOMATCH) {
         sysData.uFrame.pop(ulen);
         sysData.pFrame.pop(plen);
-      }else{
+      } else {
         if (rules[op.index].isBkr) {
           /* save phrase on both the parent and universal frames */
           /* BKR operator will decide which to use later */
@@ -710,12 +719,10 @@ module.exports = function() {
           sysData.uFrame.savePhrase(rules[op.index].lower, phraseIndex, sysData.phraseLength);
         }
       }
-      /* end backref */
     }
   };
-  // Validate the callback function's return sysData.
-  // It's the user's responsibility to get it right
-  // but it is `UDT`'s responsibility to fail if the user doesn't.
+  // Validate the callback function's returned sysData values.
+  // It's the user's responsibility to get it right but `UDT` fails if not.
   var validateUdtCallbackResult = function(udt, sysData, charsLeft) {
     if (sysData.phraseLength > charsLeft) {
       var str = thisFileName + "opUDT(" + udt.name + "): callback function error: "
@@ -752,34 +759,39 @@ module.exports = function() {
       break;
     }
   }
-  // The `UDT` operator<br>
-  // Simply calls the user's callback function, but operates like `RNM` with
-  // regard to the `AST`.
-  // There is some ambiguity here. `UDT`s act as terminals for phrase
-  // recognition but as named rules
-  // for `AST` nodes.
+  // The `UDT` operator.<br>
+  // Simply calls the user's callback function, but operates like `RNM` with regard to the `AST`
+  // and back referencing.
+  // There is some ambiguity here. `UDT`s act as terminals for phrase recognition but as named rules
+  // for `AST` nodes and back referencing.
   // See [`ast.js`](./ast.html) for usage.
   var opUDT = function(opIndex, phraseIndex, sysData) {
     var downIndex, astLength, astIndex, op, udt, astDefined;
+    var ulen, plen, saveFrame;
     op = opcodes[opIndex];
     var notLookAround = !inLookAround();
+    /* ignore AST and back references in lookaround */
     if (notLookAround) {
-      /* begin AST */
+      /* begin AST and back reference */
       astDefined = _this.ast && _this.ast.udtDefined(op.index);
       if (astDefined) {
         astIndex = rules.length + op.index;
         astLength = _this.ast.getLength();
         downIndex = _this.ast.down(astIndex, udts[op.index].name);
       }
-      /* begin AST */
+      /* NOTE: push and pop of the back reference frame is normally not necessary */
+      /* only in the case that the UDT calls evaluateRule() or evaluateUdt() */
+      ulen = sysData.uFrame.length();
+      plen = sysData.pFrame.length();
+      sysData.uFrame.push();
+      sysData.pFrame.push();
+      saveFrame = sysData.pFrame;
+      sysData.pFrame = new backRef();
     }
-
-    /* UDT */
+    /* call the UDT */
     var charsLeft = charsEnd - phraseIndex;
     udtCallbacks[op.index](sysData, chars, phraseIndex, syntaxData);
     validateUdtCallbackResult(udts[op.index], sysData, charsLeft);
-    /* UDT */
-
     if (notLookAround) {
       /* end AST */
       if (astDefined) {
@@ -789,25 +801,35 @@ module.exports = function() {
           _this.ast.up(astIndex, udts[op.index].name, phraseIndex, sysData.phraseLength);
         }
       }
-      /* end AST */
-      /* back reference */
-      if (udts[op.index].isBkr && (sysData.state === id.MATCH || sysData.state === id.EMPTY)) {
-        /* save phrase on both the parent and universal frames */
-        /* BKR operator will decide which to use later */
-        sysData.pFrame.savePhrase(udt[op.index].lower, phraseIndex, sysData.phraseLength);
-        sysData.uFrame.savePhrase(udt[op.index].lower, phraseIndex, sysData.phraseLength);
+      /* end back reference */
+      sysData.pFrame = saveFrame;
+      if (sysData.state === id.NOMATCH) {
+        sysData.uFrame.pop(ulen);
+        sysData.pFrame.pop(plen);
+      } else {
+        if (udts[op.index].isBkr) {
+          /* save phrase on both the parent and universal frames */
+          /* BKR operator will decide which to use later */
+          sysData.pFrame.savePhrase(udt[op.index].lower, phraseIndex, sysData.phraseLength);
+          sysData.uFrame.savePhrase(udt[op.index].lower, phraseIndex, sysData.phraseLength);
+        }
       }
     }
   };
-  // The `AND` operator<br>
+  // The `AND` operator.<br>
   // This is the positive `look ahead` operator.
-  // Executes its single child node, returning a matched empty phrase
-  // if the child node succeeds. Fails if the child node fails.
-  // *Always* backtracks on any matched phrase and returns empty on success.
+  // Executes its single child node, returning the EMPTY state
+  // if it succeedsand NOMATCH if it fails.
+  // *Always* backtracks on any matched phrase and returns EMPTY on success.
   var opAND = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
-    lookAround.push({lookAround : id.LOOKAROUND_AHEAD, anchor : phraseIndex, charsEnd : charsEnd, charsLength : charsLength});
+    lookAround.push({
+      lookAround : id.LOOKAROUND_AHEAD,
+      anchor : phraseIndex,
+      charsEnd : charsEnd,
+      charsLength : charsLength
+    });
     charsEnd = chars.length;
     charsLength = chars.length - charsBegin;
     opExecute(opIndex + 1, phraseIndex, sysData);
@@ -829,16 +851,21 @@ module.exports = function() {
       throw new Error('opAND: invalid state ' + sysData.state);
     }
   };
-  // The `NOT` operator<br>
+  // The `NOT` operator.<br>
   // This is the negative `look ahead` operator.
-  // Executes its single child node, returning a matched empty phrase
-  // if the child node *fails*. Fails if the child node succeeds.
-  // *Always* backtracks on any matched phrase and returns empty
+  // Executes its single child node, returning the EMPTY state
+  // if it *fails* and NOMATCH if it succeeds.
+  // *Always* backtracks on any matched phrase and returns EMPTY
   // on success (failure of its child node).
   var opNOT = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
-    lookAround.push({lookAround : id.LOOKAROUND_AHEAD, anchor : phraseIndex, charsEnd : charsEnd, charsLength : charsLength});
+    lookAround.push({
+      lookAround : id.LOOKAROUND_AHEAD,
+      anchor : phraseIndex,
+      charsEnd : charsEnd,
+      charsLength : charsLength
+    });
     charsEnd = chars.length;
     charsLength = chars.length - charsBegin;
     opExecute(opIndex + 1, phraseIndex, sysData);
@@ -858,7 +885,7 @@ module.exports = function() {
       throw new Error('opNOT: invalid state ' + sysData.state);
     }
   };
-  // The `TRG` operator<br>
+  // The `TRG` operator.<br>
   // Succeeds if the single first character of the phrase is
   // within the `min - max` range.
   var opTRG = function(opIndex, phraseIndex, sysData) {
@@ -871,22 +898,10 @@ module.exports = function() {
       }
     }
   };
-  var opABG = function(opIndex, phraseIndex, sysData) {
-    var op = opcodes[opIndex];
-    sysData.state = id.NOMATCH;
-    sysData.phraseLength = 0;
-    sysData.state = (phraseIndex === 0) ? id.EMPTY : id.NOMATCH;
-  };
-  var opAEN = function(opIndex, phraseIndex, sysData) {
-    var op = opcodes[opIndex];
-    sysData.state = id.NOMATCH;
-    sysData.phraseLength = 0;
-    sysData.state = (phraseIndex === chars.length) ? id.EMPTY : id.NOMATCH;
-  };
-  // The `TBS` operator<br>
+  // The `TBS` operator.<br>
   // Matches its pre-defined phrase against the input string.
   // All characters must match exactly.
-  // Case-sensitive literal strings (`'string'` && `%s"string"`) are translated to `TBS`
+  // Case-sensitive literal strings (`'string'` & `%s"string"`) are translated to `TBS`
   // operators by `apg`.
   // Phrase length of zero is not allowed.
   // Empty phrases can only be defined with `TLS` operators.
@@ -898,16 +913,14 @@ module.exports = function() {
     if ((phraseIndex + len) <= charsEnd) {
       for (i = 0; i < len; i += 1) {
         if (chars[phraseIndex + i] !== op.string[i]) {
-          /* NOMATCH */
           return;
         }
       }
-      /* MATCH */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
-    } /* else NOMATCH */
+    } /* implied else NOMATCH */
   };
-  // The `TLS` operator<br>
+  // The `TLS` operator.<br>
   // Matches its pre-defined phrase against the input string.
   // A case-insensitive match is attempted for ASCII alphbetical characters.
   // `TLS` is the only operator that explicitly allows empty phrases.
@@ -930,14 +943,32 @@ module.exports = function() {
           code += 32;
         }
         if (code !== op.string[i]) {
-          /* NOMATCH */
           return;
         }
       }
-      /* MATCH found */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
-    } /* else NOMATCH */
+    } /* implied else NOMATCH */
+  };
+  // The `ABG` operator.<br>
+  // This is an "anchor" for the beginning of the string, similar to the familiar regex `^` anchor.
+  // An anchor matches a position rather than a phrase.
+  // Returns EMPTY if `phraseIndex` is 0, NOMATCH otherwise.
+  var opABG = function(opIndex, phraseIndex, sysData) {
+    var op = opcodes[opIndex];
+    sysData.state = id.NOMATCH;
+    sysData.phraseLength = 0;
+    sysData.state = (phraseIndex === 0) ? id.EMPTY : id.NOMATCH;
+  };
+  // The `AEN` operator.<br>
+  // This is an "anchor" for the end of the string, similar to the familiar regex `$` anchor.
+  // An anchor matches a position rather than a phrase.
+  // Returns EMPTY if `phraseIndex` equals the input string length, NOMATCH otherwise.
+  var opAEN = function(opIndex, phraseIndex, sysData) {
+    var op = opcodes[opIndex];
+    sysData.state = id.NOMATCH;
+    sysData.phraseLength = 0;
+    sysData.state = (phraseIndex === chars.length) ? id.EMPTY : id.NOMATCH;
   };
   // The `BKR` operator.<br>
   // The back reference operator.
@@ -955,8 +986,8 @@ module.exports = function() {
     } else {
       lower = udts[op.index - rules.length].lower;
     }
-    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame.getPhrase(lower): sysData.uFrame.getPhrase(lower);
-    insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true: false;
+    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame.getPhrase(lower) : sysData.uFrame.getPhrase(lower);
+    insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true : false;
     if (frame === null) {
       return;
     }
@@ -979,11 +1010,9 @@ module.exports = function() {
             lmcode += 32;
           }
           if (code !== lmcode) {
-            /* NOMATCH */
             return;
           }
         }
-        /* MATCH */
         sysData.state = id.MATCH;
         sysData.phraseLength = len;
       } else {
@@ -992,24 +1021,26 @@ module.exports = function() {
           code = chars[phraseIndex + i];
           lmcode = chars[lmIndex + i];
           if (code !== lmcode) {
-            /* NOMATCH */
             return;
           }
         }
       }
-      /* MATCH */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
-    } /* else NOMATCH */
+    }
   };
-  // The `BKA` operator<br>
+  // The `BKA` operator.<br>
   // This is the positive `look behind` operator.
-  // It succeeds if the phrase is found to preceed `phraseIndex`.
-  // It then back tracks and returns NOMATCH or an empty string.
+  // It's child node is parsed right-to-left.
+  // Returns the EMPTY state if a match is found, NOMATCH otherwise.
+  // Like the look ahead operators, it always backtracks to `phraseIndex`.
   var opBKA = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
-    lookAround.push({lookAround : id.LOOKAROUND_BEHIND, anchor : phraseIndex});
+    lookAround.push({
+      lookAround : id.LOOKAROUND_BEHIND,
+      anchor : phraseIndex
+    });
     opExecute(opIndex + 1, phraseIndex, sysData);
     lookAround.pop();
     sysData.phraseLength = 0;
@@ -1027,14 +1058,18 @@ module.exports = function() {
       throw new Error('opBKA: invalid state ' + sysData.state);
     }
   }
-  // The `BKN` operator<br>
+  // The `BKN` operator.<br>
   // This is the negative `look behind` operator.
-  // It succeeds if the phrase is NOT found to preceed `phraseIndex`.
-  // It then back tracks and returns NOMATCH or an empty string.
+  // It's child node is parsed right-to-left.
+  // Returns the EMPTY state if a match is *not* found, NOMATCH otherwise.
+  // Like the look ahead operators, it always backtracks to `phraseIndex`.
   var opBKN = function(opIndex, phraseIndex, sysData) {
     var op, prdResult;
     op = opcodes[opIndex];
-    lookAround.push({lookAround : id.LOOKAROUND_BEHIND, anchor : phraseIndex});
+    lookAround.push({
+      lookAround : id.LOOKAROUND_BEHIND,
+      anchor : phraseIndex
+    });
     opExecute(opIndex + 1, phraseIndex, sysData);
     lookAround.pop();
     sysData.phraseLength = 0;
@@ -1050,8 +1085,9 @@ module.exports = function() {
       throw new Error('opBKN: invalid state ' + sysData.state);
     }
   }
-  // The right-to-left concatenation operator.<br>
-  // Works just like `CAT` except it parses right to left from the first character preceeding `phraseIndex`.
+  // The right-to-left `CAT` operator.<br>
+  // Called for `CAT` operators when in look behind mode.
+  // Calls its child nodes from right to left concatenating matched phrases right to left.
   var opCATBehind = function(opIndex, phraseIndex, sysData) {
     var op, success, astLength, catCharIndex, catPhrase, catMatched;
     var ulen, plen;
@@ -1088,8 +1124,9 @@ module.exports = function() {
       }
     }
   };
-  // The right-to-left repetition operator.<br>
-  // Works just like `REP` except it parses right to left from the first character preceeding `phraseIndex`.
+  // The right-to-left `REP` operator.<br>
+  // Called for `REP` operators in look behind mode.
+  // Makes repeated calls to its child node, concatenating matched phrases right to left.
   var opREPBehind = function(opIndex, phraseIndex, sysData) {
     var op, astLength, repCharIndex, repPhrase, repCount;
     var ulen, plen;
@@ -1142,13 +1179,14 @@ module.exports = function() {
       }
     }
   }
-  // The right-to-left terminal range operator.<br>
-  // Works just like `TRG` except it parses right to left from the first character preceeding `phraseIndex`.
+  // The right-to-left `TRG` operator.<br>
+  // Called for `TRG` operators in look behind mode.
+  // Matches a single character at `phraseIndex - 1` to the `min` - `max` range.
   var opTRGBehind = function(opIndex, phraseIndex, sysData) {
     var op = opcodes[opIndex];
     sysData.state = id.NOMATCH;
     sysData.phraseLength = 0;
-    if (phraseIndex >= 0) {
+    if (phraseIndex > 0) {
       var char = chars[phraseIndex - 1];
       if (op.min <= char && char <= op.max) {
         sysData.state = id.MATCH;
@@ -1156,29 +1194,28 @@ module.exports = function() {
       }
     }
   }
-  // The right-to-left terminal binary string operator.<br>
-  // Works just like `TBS` except it parses right to left from the first character preceeding `phraseIndex`.
+  // The right-to-left `TBS` operator.<br>
+  // Called for `TBS` operators in look behind mode.
+  // Matches the `TBS` phrase to the left of `phraseIndex`.
   var opTBSBehind = function(opIndex, phraseIndex, sysData) {
     var i, op, len, beg;
     op = opcodes[opIndex];
-    /* NOMATCH default */
     sysData.state = id.NOMATCH;
     len = op.string.length;
     beg = phraseIndex - len;
     if (beg >= 0) {
       for (i = 0; i < len; i += 1) {
         if (chars[beg + i] !== op.string[i]) {
-          /* NOMATCH */
           return;
         }
       }
-      /* MATCH */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
-    } /* else NOMATCH */
+    }
   }
-  // The right-to-left terminal literal string operator.<br>
-  // Works just like `TLS` except it parses right to left from the first character preceeding `phraseIndex`.
+  // The right-to-left `TLS` operator.<br>
+  // Called for `TLS` operators in look behind mode.
+  // Matches the `TLS` phrase to the left of `phraseIndex`.
   var opTLSBehind = function(opIndex, phraseIndex, sysData) {
     var op, char, beg, len;
     op = opcodes[opIndex];
@@ -1197,17 +1234,15 @@ module.exports = function() {
           char += 32;
         }
         if (char !== op.string[i]) {
-          /* NOMATCH */
           return;
         }
       }
-      /* MATCH found */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
-    } /* else NOMATCH */
+    }
   }
   // The right-to-left back reference operator.<br>
-  // Works just like `BKR` except it parses right to left from the first character preceeding `phraseIndex`.
+  // Matches the back referenced phrase to the left of `phraseIndex`.
   var opBKRBehind = function(opIndex, phraseIndex, sysData) {
     var i, code, len, op, lmIndex, lmcode, lower, beg, frame, insensitive;
     op = opcodes[opIndex];
@@ -1219,8 +1254,8 @@ module.exports = function() {
     } else {
       lower = udts[op.index - rules.length].lower;
     }
-    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame.getPhrase(lower): sysData.uFrame.getPhrase(lower);
-    insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true: false;
+    frame = (op.bkrMode === id.BKR_MODE_PM) ? sysData.pFrame.getPhrase(lower) : sysData.uFrame.getPhrase(lower);
+    insensitive = (op.bkrCase === id.BKR_MODE_CI) ? true : false;
     if (frame === null) {
       return;
     }
@@ -1245,11 +1280,9 @@ module.exports = function() {
             lmcode += 32;
           }
           if (code !== lmcode) {
-            /* NOMATCH */
             return;
           }
         }
-        /* MATCH */
         sysData.state = id.MATCH;
         sysData.phraseLength = len;
       } else {
@@ -1258,15 +1291,13 @@ module.exports = function() {
           code = chars[beg + i];
           lmcode = chars[lmIndex + i];
           if (code !== lmcode) {
-            /* NOMATCH */
             return;
           }
         }
       }
-      /* MATCH */
       sysData.state = id.MATCH;
       sysData.phraseLength = len;
-    } /* else NOMATCH */
+    }
   }
   // Generalized execution function.<br>
   // Having a single, generalized function, allows a single location
@@ -1293,8 +1324,7 @@ module.exports = function() {
     if (_this.trace !== null) {
       /* collect the trace record for down the parse tree */
       var lk = lookAroundValue();
-      _this.trace.down(op, sysData.state, phraseIndex, sysData.phraseLength,
-          lk.anchor, lk.lookAround);
+      _this.trace.down(op, sysData.state, phraseIndex, sysData.phraseLength, lk.anchor, lk.lookAround);
     }
     if (inLookBehind()) {
       switch (op.type) {
@@ -1409,8 +1439,7 @@ module.exports = function() {
     if (_this.trace !== null) {
       /* collect the trace record for up the parse tree */
       var lk = lookAroundValue();
-      _this.trace.up(op, sysData.state, phraseIndex, sysData.phraseLength,
-          lk.anchor, lk.lookAround);
+      _this.trace.up(op, sysData.state, phraseIndex, sysData.phraseLength, lk.anchor, lk.lookAround);
     }
     treeDepth -= 1;
     return ret;

@@ -1,7 +1,5 @@
 ##JavaScript APG Parsing Library
 
-**Version:**  2.0
-
 **Description:**  
 The JavaScript APG Parsing Library contains the basic core support code needed to run both <a href="https://github.com/ldthomas/apg-js2">apg<a/>, the parser generator, and the parsers that it generates.
 
@@ -40,7 +38,7 @@ View `docs/index.html` in any web browser to get started.
 Or view it on the [APG website](http://coasttocoastresearch.com/docjs2/apg-lib/index.html)
 
 **Copyright:**  
-*Copyright &copy; 2015 Lowell D. Thomas, all rights reserved*  
+*Copyright &copy; 2016 Lowell D. Thomas, all rights reserved*  
 
 **License:**  
 Released under the BSD-3-Clause license.

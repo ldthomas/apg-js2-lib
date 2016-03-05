@@ -40,7 +40,7 @@ var getBounds = function(length, beg, len) {
     end : end
   };
 }
-/* Standard set of colors and classes for HTML display of results. */
+// Define a standard set of colors and classes for HTML display of results.
 var style = {
   /* colors */
   COLOR_ACTIVE : "#000000",
@@ -76,6 +76,7 @@ var style = {
   CLASS_MONOSPACE : "mono"
 }
 exports.styleNames = style;
+// Returns a "&lt;style>" block to define some APG standard styles in an HTML page.
 exports.styleClasses = function() {
   var html = '<style>\n';
   html += '.' + style.CLASS_MONOSPACE + '{font-family: monospace;}\n';
@@ -91,7 +92,7 @@ exports.styleClasses = function() {
   html += '</style>\n';
   return html;
 }
-// Table style for all columns left aligned
+// Returns a table "&lt;style>" block for all columns left aligned
 exports.styleLeftTable = function() {
   var html = '<style>\n';
   html += "." + style.CLASS_LEFT_TABLE + "{font-family:monospace;}\n";
@@ -103,7 +104,7 @@ exports.styleLeftTable = function() {
   html += '</style>\n';
   return html;
 }
-// Table style for all columns right aligned (0 left-aligned cols)
+// Returns a table "&lt;style>" block for all columns right aligned (0 left-aligned cols)
 exports.styleRightTable = function() {
   var html = '<style>\n';
   html += "." + style.CLASS_RIGHT_TABLE + "{font-family:monospace;}\n";
@@ -115,7 +116,7 @@ exports.styleRightTable = function() {
   html += '</style>\n';
   return html;
 }
-// Table style for all but last columns right aligned (1 left-aligned col)
+// Returns a table "&lt;style>" block for all but last columns right aligned (1 left-aligned col)
 exports.styleLastLeftTable = function() {
   var html = '<style>\n';
   html += "." + style.CLASS_LAST_LEFT_TABLE + "{font-family:monospace;}\n";
@@ -129,7 +130,7 @@ exports.styleLastLeftTable = function() {
   html += '</style>\n';
   return html;
 }
-// Table style for all but last 2 columns right aligned (2 left-aligned cols)
+// Returns a table "&lt;style>" block for all but last 2 columns right aligned (2 left-aligned cols)
 exports.styleLast2LeftTable = function() {
   var html = '<style>\n';
   html += "." + style.CLASS_LAST2_LEFT_TABLE + "{font-family:monospace;}\n";
@@ -427,6 +428,7 @@ exports.charsToAscii = function(chars, beg, len) {
   }
   return ret;
 }
+// Translates a sub-array of character codes to HTML display format.
 exports.charsToAsciiHtml = function(chars, beg, len) {
   if (!Array.isArray(chars)) {
     throw new Error(thisFileName + "charsToAsciiHtml: input must be an array of integers");
@@ -448,4 +450,9 @@ exports.charsToAsciiHtml = function(chars, beg, len) {
     }
   }
   return html;
+}
+//Translates a JavaScript string to HTML display format.
+exports.stringToAsciiHtml = function(str){
+  var chars = this.stringToChars(str);
+  return this.charsToAsciiHtml(chars);
 }
