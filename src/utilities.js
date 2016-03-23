@@ -76,9 +76,8 @@ var style = {
   CLASS_MONOSPACE : "mono"
 }
 exports.styleNames = style;
-// Returns a "&lt;style>" block to define some APG standard styles in an HTML page.
-exports.styleClasses = function() {
-  var html = '<style>\n';
+var classes = function(){
+  var html = "";
   html += '.' + style.CLASS_MONOSPACE + '{font-family: monospace;}\n';
   html += '.' + style.CLASS_ACTIVE + '{font-weight: bold; color: ' + style.COLOR_TEXT + ';}\n';
   html += '.' + style.CLASS_MATCH + '{font-weight: bold; color: ' + style.COLOR_MATCH + ';}\n';
@@ -89,36 +88,30 @@ exports.styleClasses = function() {
   html += '.' + style.CLASS_REMAINDER + '{font-weight: bold; color: ' + style.COLOR_REMAINDER + ';}\n';
   html += '.' + style.CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
   html += '.' + style.CLASS_END + '{font-weight: bold; color: ' + style.COLOR_END + ';}\n';
-  html += '</style>\n';
   return html;
 }
-// Returns a table "&lt;style>" block for all columns left aligned
-exports.styleLeftTable = function() {
-  var html = '<style>\n';
+var leftTable = function(){
+  var html = "";
   html += "." + style.CLASS_LEFT_TABLE + "{font-family:monospace;}\n";
   html += "." + style.CLASS_LEFT_TABLE + ",\n";
   html += "." + style.CLASS_LEFT_TABLE + " th,\n";
   html += "." + style.CLASS_LEFT_TABLE + " td{text-align:left;border:1px solid black;border-collapse:collapse;}\n";
   html += "." + style.CLASS_LEFT_TABLE + " caption";
   html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  html += '</style>\n';
   return html;
 }
-// Returns a table "&lt;style>" block for all columns right aligned (0 left-aligned cols)
-exports.styleRightTable = function() {
-  var html = '<style>\n';
+var rightTable = function(){
+  var html = "";
   html += "." + style.CLASS_RIGHT_TABLE + "{font-family:monospace;}\n";
   html += "." + style.CLASS_RIGHT_TABLE + ",\n";
   html += "." + style.CLASS_RIGHT_TABLE + " th,\n";
   html += "." + style.CLASS_RIGHT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
   html += "." + style.CLASS_RIGHT_TABLE + " caption";
   html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  html += '</style>\n';
   return html;
 }
-// Returns a table "&lt;style>" block for all but last columns right aligned (1 left-aligned col)
-exports.styleLastLeftTable = function() {
-  var html = '<style>\n';
+var lastLeft = function(){
+  var html = "";
   html += "." + style.CLASS_LAST_LEFT_TABLE + "{font-family:monospace;}\n";
   html += "." + style.CLASS_LAST_LEFT_TABLE + ",\n";
   html += "." + style.CLASS_LAST_LEFT_TABLE + " th,\n";
@@ -127,12 +120,10 @@ exports.styleLastLeftTable = function() {
   html += "." + style.CLASS_LAST_LEFT_TABLE + " td:last-child{text-align:left;}\n";
   html += "." + style.CLASS_LAST_LEFT_TABLE + " caption";
   html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  html += '</style>\n';
   return html;
 }
-// Returns a table "&lt;style>" block for all but last 2 columns right aligned (2 left-aligned cols)
-exports.styleLast2LeftTable = function() {
-  var html = '<style>\n';
+var last2Left = function(){
+  var html = "";
   html += "." + style.CLASS_LAST2_LEFT_TABLE + "{font-family:monospace;}\n";
   html += "." + style.CLASS_LAST2_LEFT_TABLE + ",\n";
   html += "." + style.CLASS_LAST2_LEFT_TABLE + " th,\n";
@@ -143,6 +134,50 @@ exports.styleLast2LeftTable = function() {
   html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' td:nth-last-child(2){text-align:left;}\n';
   html += "." + style.CLASS_LAST2_LEFT_TABLE + " caption";
   html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
+  return html;
+}
+// Returns the content of a css file that can be used for apg & apg-exp HTML output.
+exports.css = function(){
+  var html = "";
+  html += classes();
+  html += leftTable();
+  html += rightTable();
+  html += lastLeft();
+  html += last2Left();
+  return html;
+}
+// Returns a "&lt;style>" block to define some APG standard styles in an HTML page.
+exports.styleClasses = function() {
+  var html = '<style>\n';
+  html += classes();
+  html += '</style>\n';
+  return html;
+}
+// Returns a table "&lt;style>" block for all columns left aligned
+exports.styleLeftTable = function() {
+  var html = '<style>\n';
+  html += leftTable();
+  html += '</style>\n';
+  return html;
+}
+// Returns a table "&lt;style>" block for all columns right aligned (0 left-aligned cols)
+exports.styleRightTable = function() {
+  var html = '<style>\n';
+  html += rightTable();
+  html += '</style>\n';
+  return html;
+}
+// Returns a table "&lt;style>" block for all but last columns right aligned (1 left-aligned col)
+exports.styleLastLeftTable = function() {
+  var html = '<style>\n';
+  html += lastLeft();
+  html += '</style>\n';
+  return html;
+}
+// Returns a table "&lt;style>" block for all but last 2 columns right aligned (2 left-aligned cols)
+exports.styleLast2LeftTable = function() {
+  var html = '<style>\n';
+  html += last2Left();
   html += '</style>\n';
   return html;
 }
