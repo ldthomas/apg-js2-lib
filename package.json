@@ -8,7 +8,7 @@
   },
   "files": [
     "src",
-    "apglib-min.js",
+    "apglib.js",
     "apglib.css",
     "index.md",
     "docco-gen"
