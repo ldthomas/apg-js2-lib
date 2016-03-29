@@ -28,7 +28,12 @@ In your application code you can now access the apg library with `require("apg-l
 See <a href="https://github.com/ldthomas/apg-js2-examples">apg-js2-examples</a> for examples of running JavaScript APG 2.0 and the parsers it generates.
   
 **Documentation:**  
-The documentation is in the code in [`docco`](https://jashkenas.github.io/docco/) format.
+<i><b>UPDATE:</b> The files `apglib.js` and `apglib.css` have been added to make using `apg-lib`
+ in a browser web page simple.</i><br>
+See the documentation in `src/apglibjs-gen.js` and `src/apglibcss-gen.js` for details.
+See, also, this [CodePen](http://codepen.io/apg-exp/pen/ZWKGqQ) for an example.
+
+The full documentation is in the code in [`docco`](https://jashkenas.github.io/docco/) format.
 To generate the documentation, from the package directory:
 ```
 npm install -g docco

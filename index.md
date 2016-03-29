@@ -31,4 +31,9 @@ matching phrases from the input string as it goes.
 0. A library of utility functions and objects.
 > [utilities.js](./utilities.html)<br>
 
+0. Use apg-lib in a web page.
+> [apglibjs-gen.js](./apglibjs-gen.html)<br>
+
+0. Generate the CSS file for viewing apg-lib output in a web page.
+> [apglibcss-gen.js](./apglibcss-gen.html)<br>
 

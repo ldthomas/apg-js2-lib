@@ -58,22 +58,22 @@ var style = {
   COLOR_BACKGROUND : "#FFFFFF",
   COLOR_BORDER : "#000000",
   /* color classes */
-  CLASS_ACTIVE : "active",
-  CLASS_MATCH : "match",
-  CLASS_NOMATCH : "nomatch",
-  CLASS_EMPTY : "empty",
-  CLASS_LH_MATCH : "lh-match",
-  CLASS_LB_MATCH : "lb-match",
-  CLASS_REMAINDER : "remainder",
-  CLASS_CTRL : "ctrl-char",
-  CLASS_END : "line-end",
+  CLASS_ACTIVE : "apg-active",
+  CLASS_MATCH : "apg-match",
+  CLASS_NOMATCH : "apg-nomatch",
+  CLASS_EMPTY : "apg-empty",
+  CLASS_LH_MATCH : "apg-lh-match",
+  CLASS_LB_MATCH : "apg-lb-match",
+  CLASS_REMAINDER : "apg-remainder",
+  CLASS_CTRL : "apg-ctrl-char",
+  CLASS_END : "apg-line-end",
   /* table classes */
-  CLASS_LEFT_TABLE : "left-table",
-  CLASS_RIGHT_TABLE : "right-table",
-  CLASS_LAST_LEFT_TABLE : "last-left-table",
-  CLASS_LAST2_LEFT_TABLE : "last2-left-table",
+  CLASS_LEFT_TABLE : "apg-left-table",
+  CLASS_RIGHT_TABLE : "apg-right-table",
+  CLASS_LAST_LEFT_TABLE : "apg-last-left-table",
+  CLASS_LAST2_LEFT_TABLE : "apg-last2-left-table",
   /* text classes */
-  CLASS_MONOSPACE : "mono"
+  CLASS_MONOSPACE : "apg-mono"
 }
 exports.styleNames = style;
 var classes = function(){
