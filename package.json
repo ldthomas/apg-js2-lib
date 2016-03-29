@@ -1,6 +1,6 @@
 {
   "name": "apg-lib",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Library of core parsing modules required by apg and apg-generated parsers.",
   "main": "./src/export.js",
   "scripts": {
@@ -8,6 +8,8 @@
   },
   "files": [
     "src",
+    "apglib.js",
+    "apglib.css",
     "index.md",
     "docco-gen"
   ],
