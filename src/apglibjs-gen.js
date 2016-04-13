@@ -3,15 +3,16 @@
 // ```
 //npm install -g browserify
 //npm install -g uglifyjs
-//browserify apglibjs-gen.js | uglifyjs --compress --mangle > apglib.js
+//browserify apglibjs-gen.js > apglib.js
+//uglifyjs apglib.js --compress --mangle > apglib-min.js
 // ```
-// To use it in a browser, include `apglib.js` 
+// To use it in a browser, include `apglib.js` or `apglib-min.js`
 // and the style sheet, `apglib.css`, in a script in the web page header.
 // ```
 //<head>
 // ...
 // <link rel="stylesheet" href="apglib.css">
-// <script src="apglib.js" charset="utf-8"></script>
+// <script src="apglib-min.js" charset="utf-8"></script>
 // ...
 //</head>
 // ```
