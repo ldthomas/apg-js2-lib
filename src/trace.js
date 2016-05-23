@@ -445,9 +445,6 @@ module.exports = function() {
     footer += 'ABG - anchor - begin of input string<br>\n';
     footer += 'AEN - anchor - end of input string<br>\n';
     footer += '</p>\n';
-    /* close the page */
-    footer += '</body>\n';
-    footer += '</html>\n';
     return footer;
   }
   /* Returns the filtered records, formatted as an HTML table. */

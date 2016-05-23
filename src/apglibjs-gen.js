@@ -3,7 +3,8 @@
 // ```
 //npm install -g browserify
 //npm install -g uglifyjs
-//browserify apglibjs-gen.js | uglifyjs --compress --mangle > apglib.js
+//browserify apglibjs-gen.js > apglib.js
+//uglifyjs apglib.js --compress --mangle > apglib.js
 // ```
 // To use it in a browser, include `apglib.js` 
 // and the style sheet, `apglib.css`, in a script in the web page header.
@@ -12,6 +13,8 @@
 // ...
 // <link rel="stylesheet" href="apglib.css">
 // <script src="apglib.js" charset="utf-8"></script>
+// <!-- or -->
+// <script src="apglib-min.js" charset="utf-8"></script>
 // ...
 //</head>
 // ```
