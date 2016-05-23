@@ -1,6 +1,6 @@
 {
   "name": "apg-lib",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "description": "Library of core parsing modules required by apg and apg-generated parsers.",
   "main": "./src/export.js",
   "scripts": {
