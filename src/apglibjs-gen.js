@@ -12,6 +12,8 @@
 //<head>
 // ...
 // <link rel="stylesheet" href="apglib.css">
+// <script src="apglib.js" charset="utf-8"></script>
+// <!-- or -->
 // <script src="apglib-min.js" charset="utf-8"></script>
 // ...
 //</head>
