@@ -8,6 +8,9 @@
 .apg-remainder{font-weight: bold; color: #999999;}
 .apg-ctrl-char{font-weight: bolder; font-style: italic; font-size: .6em;}
 .apg-line-end{font-weight: bold; color: #000000;}
+.apg-error{font-weight: bold; color: #FF4000;}
+.apg-phrase{color: #000000; background-color: #B3C1FF;}
+.apg-empty-phrase{color: #0fbd0f;}
 .apg-left-table{font-family:monospace;}
 .apg-left-table,
 .apg-left-table th,

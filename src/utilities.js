@@ -57,6 +57,9 @@ var style = {
   COLOR_TEXT : "#000000",
   COLOR_BACKGROUND : "#FFFFFF",
   COLOR_BORDER : "#000000",
+  COLOR_ERROR : "#FF4000",
+  COLOR_PHRASE : "#000000",
+  COLOR_PHRASE_BG : "#B3C1FF",
   /* color classes */
   CLASS_ACTIVE : "apg-active",
   CLASS_MATCH : "apg-match",
@@ -67,6 +70,9 @@ var style = {
   CLASS_REMAINDER : "apg-remainder",
   CLASS_CTRL : "apg-ctrl-char",
   CLASS_END : "apg-line-end",
+  CLASS_ERROR : "apg-error",
+  CLASS_PHRASE : "apg-phrase",
+  CLASS_EMPTY_PHRASE : "apg-empty-phrase",
   /* table classes */
   CLASS_LEFT_TABLE : "apg-left-table",
   CLASS_RIGHT_TABLE : "apg-right-table",
@@ -88,6 +94,9 @@ var classes = function(){
   html += '.' + style.CLASS_REMAINDER + '{font-weight: bold; color: ' + style.COLOR_REMAINDER + ';}\n';
   html += '.' + style.CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
   html += '.' + style.CLASS_END + '{font-weight: bold; color: ' + style.COLOR_END + ';}\n';
+  html += '.' + style.CLASS_ERROR + '{font-weight: bold; color: ' + style.COLOR_ERROR + ';}\n';
+  html += '.' + style.CLASS_PHRASE + '{color: ' + style.COLOR_PHRASE + '; background-color: ' + style.COLOR_PHRASE_BG + ';}\n';
+  html += '.' + style.CLASS_EMPTY_PHRASE + '{color: ' + style.COLOR_EMPTY + ';}\n';
   return html;
 }
 var leftTable = function(){
@@ -248,7 +257,7 @@ exports.parserResultToHtml = function(result, caption) {
     state = '<span class="' + style.CLASS_NOMATCH + '">unrecognized</span>';
   }
   var html = '';
-  html += '<p><table class="' + style.CLASS_LEFT_TABLE + '">\n';
+  html += '<table class="' + style.CLASS_LEFT_TABLE + '">\n';
   if (cap) {
     html += '<caption>' + cap + '</caption>\n';
   }
@@ -273,7 +282,7 @@ exports.parserResultToHtml = function(result, caption) {
   html += '<tr><td>sub-string begin</td><td>' + result.subBegin + '</td><td>sub-string first character index</td></tr>\n';
   html += '<tr><td>sub-string end</td><td>' + result.subEnd + '</td><td>sub-string end-of-string index</td></tr>\n';
   html += '<tr><td>sub-string length</td><td>' + result.subLength + '</td><td>sub-string length</td></tr>\n';
-  html += '</table></p>\n';
+  html += '</table>\n';
   return html;
 }
 // Translates a sub-array of integer character codes into a string.
