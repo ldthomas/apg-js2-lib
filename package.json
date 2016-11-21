@@ -27,5 +27,14 @@
     "url": "https://github.com/ldthomas/apg-js2-lib/issues"
   },
   "author": "Lowell D. Thomas <lowell@coasttocoastresearch.com>",
-  "license": "BSD-3-Clause"
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-browserify": "^0.5.1",
+    "gulp-concat": "^2.6.1",
+    "gulp-connect": "^5.0.0",
+    "gulp-less": "^3.3.0",
+    "gulp-rename": "^1.2.2",
+    "toless": "file:../toless"
+  }
 }

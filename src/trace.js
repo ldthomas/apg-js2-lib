@@ -69,7 +69,7 @@ module.exports = function() {
   var MAX_PHRASE = 80;
   var MAX_TLS = 5;
   var utils = require("./utilities.js");
-  var style = utils.styleNames;
+  var style = require("./style.js");
   var circular = new (require("./circular-buffer.js"))();
   var id = require("./identifiers.js");
   var lines = [];
@@ -86,8 +86,8 @@ module.exports = function() {
   /* special trace table phrases */
   var PHRASE_END_CHAR = "&bull;";
   var PHRASE_CONTINUE_CHAR = "&hellip;";
-  var PHRASE_END = '<span class="' + style.CLASS_END + '">&bull;</span>';
-  var PHRASE_CONTINUE = '<span class="' + style.CLASS_END + '">&hellip;</span>';
+  var PHRASE_END = '<span class="' + style.CLASS_LINEEND + '">&bull;</span>';
+  var PHRASE_CONTINUE = '<span class="' + style.CLASS_LINEEND + '">&hellip;</span>';
   var PHRASE_EMPTY = '<span class="' + style.CLASS_EMPTY + '">&#120634;</span>';
   var PHRASE_NOMATCH = '<span class="' + style.CLASS_NOMATCH + '">&#120636;</span>';
   /* filter the non-RNM & non-UDT operators */
@@ -386,7 +386,7 @@ module.exports = function() {
     header += '<h1>JavaScript APG Trace</h1>\n';
     header += '<h3>&nbsp;&nbsp;&nbsp;&nbsp;display mode: ' + modeName + '</h3>\n';
     header += '<h5>&nbsp;&nbsp;&nbsp;&nbsp;' + new Date() + '</h5>\n';
-    header += '<table class="'+style.CLASS_LAST2_LEFT_TABLE+'">\n';
+    header += '<table class="'+style.CLASS_TRACE+'">\n';
     if (typeof (caption) === "string") {
       header += '<caption>' + caption + '</caption>';
     }
@@ -412,13 +412,13 @@ module.exports = function() {
     footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE + ' characters of the phrase being matched<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH
     + '">matched characters</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LH_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKAHEAD
     + '">matched characters in look ahead mode</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LB_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKBEHIND
     + '">matched characters in look behind mode</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_REMAINDER
         + '">remainder characters(not yet examined by parser)</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRL
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRLCHAR
         + '">control characters, TAB, LF, CR, etc. (ASCII mode only)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_EMPTY + ' empty string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_END + ' end of input string<br>\n';
@@ -512,9 +512,9 @@ module.exports = function() {
       html += '<td>';
       html += that.indent(line.depth);
       if (lookAhead) {
-        html += '<span class="' + style.CLASS_LH_MATCH + '">';
+        html += '<span class="' + style.CLASS_LOOKAHEAD + '">';
       }else  if (lookBehind) {
-        html += '<span class="' + style.CLASS_LB_MATCH + '">';
+        html += '<span class="' + style.CLASS_LOOKBEHIND + '">';
       }
       html += utils.opcodeToString(line.opcode.type);
       if (line.opcode.type === id.RNM) {
@@ -704,7 +704,7 @@ module.exports = function() {
     var html = '';
     var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
-    var spanBehind = '<span class="' + style.CLASS_LB_MATCH + '">';
+    var spanBehind = '<span class="' + style.CLASS_LOOKBEHIND + '">';
     var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
     var spanend = '</span>';
     var prev = false;
@@ -744,7 +744,7 @@ module.exports = function() {
   }
   /* display phrases matched in look-ahead mode */
   var displayAhead = function(mode, chars, state, index, length) {
-    var spanAhead = '<span class="' + style.CLASS_LH_MATCH + '">';
+    var spanAhead = '<span class="' + style.CLASS_LOOKAHEAD + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
   }
   /* display phrases matched in normal parsing mode */

@@ -5,6 +5,8 @@
 *.out
 *.zip
 *.tgz
+gulpfile.js
+*.html
 cmsg
 js-gen
 css-gen
@@ -14,4 +16,5 @@ css-gen
 **node_modules/
 **test/
 **docs/
+**style/
 

@@ -1,51 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-// This function is used to generate a browser-accessible copy of `apg-lib`.
-// To generate and minify:
-// ```
-//npm install -g browserify
-//npm install -g uglifyjs
-//browserify apglibjs-gen.js > apglib.js
-//uglifyjs apglib.js --compress --mangle > apglib.js
-// ```
-// To use it in a browser, include `apglib.js` 
-// and the style sheet, `apglib.css`, in a script in the web page header.
-// ```
-//<head>
-// ...
-// <link rel="stylesheet" href="apglib.css">
-// <script src="apglib.js" charset="utf-8"></script>
-// <!-- or -->
-// <script src="apglib-min.js" charset="utf-8"></script>
-// ...
-//</head>
-// ```
-// You can now access `apg-lib` 
-// in your web page JavaScript
-// through the variable `window.apglib`. 
-// ```
-//  <script>
-//  var exec = function(){
-//    var str = "---abc---";
-//    /* 
-//     * instantiate a parser
-//    */
-//    var parser = new apglib.parser()';
-//    /* 
-//     * use the "string to array of character codes"
-//     * utility function
-//    */
-//    var chars = apglib.utils.stringToChars(str);
-//    /*
-//     * more code ...
-//    */
-//  }
-//  </script>
-// ```
-(function(){
-  this.apglib = require("./export.js");
-})()
-
-},{"./export.js":4}],2:[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 // This module is used by the parser to build an [Abstract Syntax Tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree) (AST).
 // The AST can be thought of as a subset of the full parse tree.
 // Each node of the AST holds the phrase that was matched at the corresponding, named parse tree node.
@@ -291,7 +244,7 @@ module.exports = function() {
   }
 }
 
-},{"./identifiers.js":5,"./utilities.js":9}],3:[function(require,module,exports){
+},{"./identifiers.js":4,"./utilities.js":9}],2:[function(require,module,exports){
 // This module acts as a "circular buffer". It is used to keep track
 // only the last N records in an array of records. If more than N records
 // are saved, each additional record overwrites the previously oldest record.
@@ -365,25 +318,20 @@ module.exports = function() {
   }
 }
 
-},{}],4:[function(require,module,exports){
-// This module serves only to export all other objects and object constructors with a single `require("apg-lib")` statement.
-/*
-* COPYRIGHT: Copyright (c) 2016 Lowell D. Thomas, all rights reserved
-*   LICENSE: BSD-3-Clause
-*    AUTHOR: Lowell D. Thomas
-*     EMAIL: lowell@coasttocoastresearch.com
-*   WEBSITE: http://coasttocoastresearch.com/
-*/
-"use strict";
-exports.ast = require("./ast.js");
-exports.circular = require("./circular-buffer.js");
-exports.ids = require("./identifiers.js");
-exports.parser = require("./parser.js");
-exports.stats = require("./stats.js");
-exports.trace = require("./trace.js");
-exports.utils = require("./utilities.js");
+},{}],3:[function(require,module,exports){
+// This function is used to generate a browser-accessible copy of `apg-lib`.
+(function(){
+  this.apglib = {};
+  this.apglib.ast = require("./ast.js");
+  this.apglib.circular = require("./circular-buffer.js");
+  this.apglib.ids = require("./identifiers.js");
+  this.apglib.parser = require("./parser.js");
+  this.apglib.stats = require("./stats.js");
+  this.apglib.trace = require("./trace.js");
+  this.apglib.utils = require("./utilities.js");
+})()
 
-},{"./ast.js":2,"./circular-buffer.js":3,"./identifiers.js":5,"./parser.js":6,"./stats.js":7,"./trace.js":8,"./utilities.js":9}],5:[function(require,module,exports){
+},{"./ast.js":1,"./circular-buffer.js":2,"./identifiers.js":4,"./parser.js":5,"./stats.js":6,"./trace.js":8,"./utilities.js":9}],4:[function(require,module,exports){
 // This module exposes a list of named identifiers, shared across the parser generator
 // and the parsers that are generated.
 "use strict";
@@ -460,7 +408,7 @@ module.exports = {
   BKR_MODE_CS : 603,
   BKR_MODE_CI : 604
 }
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 // This is the primary object of `apg-lib`. Calling its `parse()` member function 
 // walks the parse tree of opcodes, matching phrases from the input string as it goes.
 // The working code for all of the operators, `ALT`, `CAT`, etc. is in this module.
@@ -1909,7 +1857,7 @@ module.exports = function() {
   };
 }
 
-},{"./identifiers.js":5,"./utilities.js":9}],7:[function(require,module,exports){
+},{"./identifiers.js":4,"./utilities.js":9}],6:[function(require,module,exports){
 // This module is the constructor for the statistics gathering object.
 // The statistics are nothing more than keeping a count of the 
 // number of times each node in the parse tree is traversed.
@@ -1922,7 +1870,7 @@ module.exports = function() {
   var thisFileName = "stats.js: ";
   var id = require("./identifiers.js");
   var utils = require("./utilities");
-  var style = utils.styleNames;
+  var style = require("./style.js");
   var rules = [];
   var udts = [];
   var stats = [];
@@ -2129,7 +2077,7 @@ module.exports = function() {
   this.toHtml = function(type, caption) {
     var display = displayOpsOnly;
     var html = "";
-    html += '<table class="'+style.CLASS_RIGHT_TABLE+'">\n';
+    html += '<table class="'+style.CLASS_STATS+'">\n';
     if (typeof (caption) === "string") {
       html += '<caption>' + caption + '</caption>\n';
     }
@@ -2189,7 +2137,29 @@ module.exports = function() {
   }
 }
 
-},{"./identifiers.js":5,"./utilities":9}],8:[function(require,module,exports){
+},{"./identifiers.js":4,"./style.js":7,"./utilities":9}],7:[function(require,module,exports){
+module.exports = {
+
+  /* classes */
+  CLASS_MONOSPACE: 'apg-mono',
+  CLASS_ACTIVE: 'apg-active',
+  CLASS_EMPTY: 'apg-empty',
+  CLASS_MATCH: 'apg-match',
+  CLASS_NOMATCH: 'apg-nomatch',
+  CLASS_LOOKAHEAD: 'apg-lh-match',
+  CLASS_LOOKBEHIND: 'apg-lb-match',
+  CLASS_REMAINDER: 'apg-remainder',
+  CLASS_CTRLCHAR: 'apg-ctrl-char',
+  CLASS_LINEEND: 'apg-line-end',
+  CLASS_ERROR: 'apg-error',
+  CLASS_PHRASE: 'apg-phrase',
+  CLASS_EMPTYPHRASE: 'apg-empty-phrase',
+  CLASS_STATE: 'apg-state',
+  CLASS_STATS: 'apg-stats',
+  CLASS_TRACE: 'apg-trace',
+}
+
+},{}],8:[function(require,module,exports){
 // This module provides a means of tracing the parser through the parse tree as it goes.
 // It is the primary debugging facility for debugging both the SABNF grammar syntax
 // and the input strings that are supposed to be valid grammar sentences.
@@ -2261,7 +2231,7 @@ module.exports = function() {
   var MAX_PHRASE = 80;
   var MAX_TLS = 5;
   var utils = require("./utilities.js");
-  var style = utils.styleNames;
+  var style = require("./style.js");
   var circular = new (require("./circular-buffer.js"))();
   var id = require("./identifiers.js");
   var lines = [];
@@ -2278,8 +2248,8 @@ module.exports = function() {
   /* special trace table phrases */
   var PHRASE_END_CHAR = "&bull;";
   var PHRASE_CONTINUE_CHAR = "&hellip;";
-  var PHRASE_END = '<span class="' + style.CLASS_END + '">&bull;</span>';
-  var PHRASE_CONTINUE = '<span class="' + style.CLASS_END + '">&hellip;</span>';
+  var PHRASE_END = '<span class="' + style.CLASS_LINEEND + '">&bull;</span>';
+  var PHRASE_CONTINUE = '<span class="' + style.CLASS_LINEEND + '">&hellip;</span>';
   var PHRASE_EMPTY = '<span class="' + style.CLASS_EMPTY + '">&#120634;</span>';
   var PHRASE_NOMATCH = '<span class="' + style.CLASS_NOMATCH + '">&#120636;</span>';
   /* filter the non-RNM & non-UDT operators */
@@ -2578,7 +2548,7 @@ module.exports = function() {
     header += '<h1>JavaScript APG Trace</h1>\n';
     header += '<h3>&nbsp;&nbsp;&nbsp;&nbsp;display mode: ' + modeName + '</h3>\n';
     header += '<h5>&nbsp;&nbsp;&nbsp;&nbsp;' + new Date() + '</h5>\n';
-    header += '<table class="'+style.CLASS_LAST2_LEFT_TABLE+'">\n';
+    header += '<table class="'+style.CLASS_TRACE+'">\n';
     if (typeof (caption) === "string") {
       header += '<caption>' + caption + '</caption>';
     }
@@ -2604,13 +2574,13 @@ module.exports = function() {
     footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE + ' characters of the phrase being matched<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH
     + '">matched characters</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LH_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKAHEAD
     + '">matched characters in look ahead mode</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LB_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKBEHIND
     + '">matched characters in look behind mode</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_REMAINDER
         + '">remainder characters(not yet examined by parser)</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRL
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRLCHAR
         + '">control characters, TAB, LF, CR, etc. (ASCII mode only)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_EMPTY + ' empty string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_END + ' end of input string<br>\n';
@@ -2704,9 +2674,9 @@ module.exports = function() {
       html += '<td>';
       html += that.indent(line.depth);
       if (lookAhead) {
-        html += '<span class="' + style.CLASS_LH_MATCH + '">';
+        html += '<span class="' + style.CLASS_LOOKAHEAD + '">';
       }else  if (lookBehind) {
-        html += '<span class="' + style.CLASS_LB_MATCH + '">';
+        html += '<span class="' + style.CLASS_LOOKBEHIND + '">';
       }
       html += utils.opcodeToString(line.opcode.type);
       if (line.opcode.type === id.RNM) {
@@ -2896,7 +2866,7 @@ module.exports = function() {
     var html = '';
     var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
-    var spanBehind = '<span class="' + style.CLASS_LB_MATCH + '">';
+    var spanBehind = '<span class="' + style.CLASS_LOOKBEHIND + '">';
     var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
     var spanend = '</span>';
     var prev = false;
@@ -2936,7 +2906,7 @@ module.exports = function() {
   }
   /* display phrases matched in look-ahead mode */
   var displayAhead = function(mode, chars, state, index, length) {
-    var spanAhead = '<span class="' + style.CLASS_LH_MATCH + '">';
+    var spanAhead = '<span class="' + style.CLASS_LOOKAHEAD + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
   }
   /* display phrases matched in normal parsing mode */
@@ -3018,12 +2988,13 @@ module.exports = function() {
   }
 }
 
-},{"./circular-buffer.js":3,"./identifiers.js":5,"./utilities.js":9}],9:[function(require,module,exports){
+},{"./circular-buffer.js":2,"./identifiers.js":4,"./style.js":7,"./utilities.js":9}],9:[function(require,module,exports){
 // This module exports a variety of utility functions that support 
 // [`apg`](https://github.com/ldthomas/apg-js2), [`apg-lib`](https://github.com/ldthomas/apg-js2-lib)
 // and the generated parser applications.
 "use strict";
 var thisFileName = "utilities.js: ";
+var style = require('./style.js');
 var _this = this;
 /* translate (implied) phrase beginning character and length to actual first and last character indexes */
 /* used by multiple phrase handling functions */
@@ -3061,147 +3032,25 @@ var getBounds = function(length, beg, len) {
     end : end
   };
 }
-// Define a standard set of colors and classes for HTML display of results.
-var style = {
-  /* colors */
-  COLOR_ACTIVE : "#000000",
-  COLOR_MATCH : "#264BFF",
-  COLOR_EMPTY : "#0fbd0f",
-  COLOR_NOMATCH : "#FF4000",
-  COLOR_LH_MATCH : "#1A97BA",
-  COLOR_LB_MATCH : "#5F1687",
-  COLOR_LH_NOMATCH : "#FF8000",
-  COLOR_LB_NOMATCH : "#e6ac00",
-  COLOR_END : "#000000",
-  COLOR_CTRL : "#000000",
-  COLOR_REMAINDER : "#999999",
-  COLOR_TEXT : "#000000",
-  COLOR_BACKGROUND : "#FFFFFF",
-  COLOR_BORDER : "#000000",
-  /* color classes */
-  CLASS_ACTIVE : "apg-active",
-  CLASS_MATCH : "apg-match",
-  CLASS_NOMATCH : "apg-nomatch",
-  CLASS_EMPTY : "apg-empty",
-  CLASS_LH_MATCH : "apg-lh-match",
-  CLASS_LB_MATCH : "apg-lb-match",
-  CLASS_REMAINDER : "apg-remainder",
-  CLASS_CTRL : "apg-ctrl-char",
-  CLASS_END : "apg-line-end",
-  /* table classes */
-  CLASS_LEFT_TABLE : "apg-left-table",
-  CLASS_RIGHT_TABLE : "apg-right-table",
-  CLASS_LAST_LEFT_TABLE : "apg-last-left-table",
-  CLASS_LAST2_LEFT_TABLE : "apg-last2-left-table",
-  /* text classes */
-  CLASS_MONOSPACE : "apg-mono"
-}
-exports.styleNames = style;
-var classes = function(){
-  var html = "";
-  html += '.' + style.CLASS_MONOSPACE + '{font-family: monospace;}\n';
-  html += '.' + style.CLASS_ACTIVE + '{font-weight: bold; color: ' + style.COLOR_TEXT + ';}\n';
-  html += '.' + style.CLASS_MATCH + '{font-weight: bold; color: ' + style.COLOR_MATCH + ';}\n';
-  html += '.' + style.CLASS_EMPTY + '{font-weight: bold; color: ' + style.COLOR_EMPTY + ';}\n';
-  html += '.' + style.CLASS_NOMATCH + '{font-weight: bold; color: ' + style.COLOR_NOMATCH + ';}\n';
-  html += '.' + style.CLASS_LH_MATCH + '{font-weight: bold; color: ' + style.COLOR_LH_MATCH + ';}\n';
-  html += '.' + style.CLASS_LB_MATCH + '{font-weight: bold; color: ' + style.COLOR_LB_MATCH + ';}\n';
-  html += '.' + style.CLASS_REMAINDER + '{font-weight: bold; color: ' + style.COLOR_REMAINDER + ';}\n';
-  html += '.' + style.CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
-  html += '.' + style.CLASS_END + '{font-weight: bold; color: ' + style.COLOR_END + ';}\n';
-  return html;
-}
-var leftTable = function(){
-  var html = "";
-  html += "." + style.CLASS_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LEFT_TABLE + " td{text-align:left;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var rightTable = function(){
-  var html = "";
-  html += "." + style.CLASS_RIGHT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_RIGHT_TABLE + ",\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " th,\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var lastLeft = function(){
-  var html = "";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " th:last-child{text-align:left;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " td:last-child{text-align:left;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var last2Left = function(){
-  var html = "";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' th:last-child{text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' th:nth-last-child(2){text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' td:last-child{text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' td:nth-last-child(2){text-align:left;}\n';
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-// Returns the content of a css file that can be used for apg & apg-exp HTML output.
-exports.css = function(){
-  var html = "";
-  html += classes();
-  html += leftTable();
-  html += rightTable();
-  html += lastLeft();
-  html += last2Left();
-  return html;
-}
-// Returns a "&lt;style>" block to define some APG standard styles in an HTML page.
-exports.styleClasses = function() {
-  var html = '<style>\n';
-  html += classes();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all columns left aligned
-exports.styleLeftTable = function() {
-  var html = '<style>\n';
-  html += leftTable();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all columns right aligned (0 left-aligned cols)
-exports.styleRightTable = function() {
-  var html = '<style>\n';
-  html += rightTable();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all but last columns right aligned (1 left-aligned col)
-exports.styleLastLeftTable = function() {
-  var html = '<style>\n';
-  html += lastLeft();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all but last 2 columns right aligned (2 left-aligned cols)
-exports.styleLast2LeftTable = function() {
-  var html = '<style>\n';
-  html += last2Left();
-  html += '</style>\n';
-  return html;
-}
+//var style = {
+//  /* classes */
+//  CLASS_ACTIVE : "apg-active",
+//  CLASS_MATCH : "apg-match",
+//  CLASS_NOMATCH : "apg-nomatch",
+//  CLASS_EMPTY : "apg-empty",
+//  CLASS_LOOKAHEAD : "apg-lh-match",
+//  CLASS_LOOKBEHIND : "apg-lb-match",
+//  CLASS_REMAINDER : "apg-remainder",
+//  CLASS_CTRLCHAR : "apg-ctrl-char",
+//  CLASS_LINEEND : "apg-line-end",
+//  CLASS_ERROR : "apg-error",
+//  CLASS_PHRASE : "apg-phrase",
+//  CLASS_EMPTYPHRASE : "apg-empty-phrase",
+//  CLASS_STATE : "apg-state",
+//  CLASS_STATS : "apg-stats",
+//  CLASS_TRACE : "apg-trace",
+//  CLASS_MONOSPACE : "apg-mono"
+//}
 // Generates a complete, minimal HTML5 page, inserting the user's HTML text on the page.
 // - *html* - the page text in HTML format
 // - *title* - the HTML page `<title>` - defaults to `htmlToPage`.
@@ -3219,11 +3068,12 @@ exports.htmlToPage = function(html, title) {
   page += '<head>\n';
   page += '<meta charset="utf-8">\n';
   page += '<title>' + title + '</title>\n';
-  page += exports.styleClasses();
-  page += exports.styleLeftTable();
-  page += exports.styleRightTable();
-  page += exports.styleLastLeftTable();
-  page += exports.styleLast2LeftTable();
+  page += '<link rel="stylesheet" href="apglib.css">\n';
+//  page += exports.styleClasses();
+//  page += exports.styleLeftTable();
+//  page += exports.styleRightTable();
+//  page += exports.styleLastLeftTable();
+//  page += exports.styleLast2LeftTable();
   page += '</head>\n<body>\n';
   page += '<p>' + new Date() + '</p>\n';
   page += html;
@@ -3269,7 +3119,7 @@ exports.parserResultToHtml = function(result, caption) {
     state = '<span class="' + style.CLASS_NOMATCH + '">unrecognized</span>';
   }
   var html = '';
-  html += '<p><table class="' + style.CLASS_LEFT_TABLE + '">\n';
+  html += '<table class="' + style.CLASS_STATE + '">\n';
   if (cap) {
     html += '<caption>' + cap + '</caption>\n';
   }
@@ -3294,7 +3144,7 @@ exports.parserResultToHtml = function(result, caption) {
   html += '<tr><td>sub-string begin</td><td>' + result.subBegin + '</td><td>sub-string first character index</td></tr>\n';
   html += '<tr><td>sub-string end</td><td>' + result.subEnd + '</td><td>sub-string end-of-string index</td></tr>\n';
   html += '<tr><td>sub-string length</td><td>' + result.subLength + '</td><td>sub-string length</td></tr>\n';
-  html += '</table></p>\n';
+  html += '</table>\n';
   return html;
 }
 // Translates a sub-array of integer character codes into a string.
@@ -3496,10 +3346,10 @@ exports.charsToAsciiHtml = function(chars, beg, len) {
     char = chars[i];
     if (char < 32 || char === 127) {
       /* control characters */
-      html += '<span class="' + style.CLASS_CTRL + '">' + _this.asciiChars[char] + '</span>';
+      html += '<span class="' + style.CLASS_CTRLCHAR + '">' + _this.asciiChars[char] + '</span>';
     } else if (char > 127) {
       /* non-ASCII */
-      html += '<span class="' + style.CLASS_CTRL + '">' + 'U+' + _this.charToHex(char) + '</span>';
+      html += '<span class="' + style.CLASS_CTRLCHAR + '">' + 'U+' + _this.charToHex(char) + '</span>';
     } else {
       /* printing ASCII, 32 <= char <= 126 */
       html += _this.asciiChars[char];
@@ -3512,4 +3362,4 @@ exports.stringToAsciiHtml = function(str){
   var chars = this.stringToChars(str);
   return this.charsToAsciiHtml(chars);
 }
-},{"./identifiers.js":5}]},{},[1]);
+},{"./identifiers.js":4,"./style.js":7}]},{},[3])

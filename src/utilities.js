@@ -3,6 +3,7 @@
 // and the generated parser applications.
 "use strict";
 var thisFileName = "utilities.js: ";
+var style = require('./style.js');
 var _this = this;
 /* translate (implied) phrase beginning character and length to actual first and last character indexes */
 /* used by multiple phrase handling functions */
@@ -40,156 +41,25 @@ var getBounds = function(length, beg, len) {
     end : end
   };
 }
-// Define a standard set of colors and classes for HTML display of results.
-var style = {
-  /* colors */
-  COLOR_ACTIVE : "#000000",
-  COLOR_MATCH : "#264BFF",
-  COLOR_EMPTY : "#0fbd0f",
-  COLOR_NOMATCH : "#FF4000",
-  COLOR_LH_MATCH : "#1A97BA",
-  COLOR_LB_MATCH : "#5F1687",
-  COLOR_LH_NOMATCH : "#FF8000",
-  COLOR_LB_NOMATCH : "#e6ac00",
-  COLOR_END : "#000000",
-  COLOR_CTRL : "#000000",
-  COLOR_REMAINDER : "#999999",
-  COLOR_TEXT : "#000000",
-  COLOR_BACKGROUND : "#FFFFFF",
-  COLOR_BORDER : "#000000",
-  COLOR_ERROR : "#FF4000",
-  COLOR_PHRASE : "#000000",
-  COLOR_PHRASE_BG : "#B3C1FF",
-  /* color classes */
-  CLASS_ACTIVE : "apg-active",
-  CLASS_MATCH : "apg-match",
-  CLASS_NOMATCH : "apg-nomatch",
-  CLASS_EMPTY : "apg-empty",
-  CLASS_LH_MATCH : "apg-lh-match",
-  CLASS_LB_MATCH : "apg-lb-match",
-  CLASS_REMAINDER : "apg-remainder",
-  CLASS_CTRL : "apg-ctrl-char",
-  CLASS_END : "apg-line-end",
-  CLASS_ERROR : "apg-error",
-  CLASS_PHRASE : "apg-phrase",
-  CLASS_EMPTY_PHRASE : "apg-empty-phrase",
-  /* table classes */
-  CLASS_LEFT_TABLE : "apg-left-table",
-  CLASS_RIGHT_TABLE : "apg-right-table",
-  CLASS_LAST_LEFT_TABLE : "apg-last-left-table",
-  CLASS_LAST2_LEFT_TABLE : "apg-last2-left-table",
-  /* text classes */
-  CLASS_MONOSPACE : "apg-mono"
-}
-exports.styleNames = style;
-var classes = function(){
-  var html = "";
-  html += '.' + style.CLASS_MONOSPACE + '{font-family: monospace;}\n';
-  html += '.' + style.CLASS_ACTIVE + '{font-weight: bold; color: ' + style.COLOR_TEXT + ';}\n';
-  html += '.' + style.CLASS_MATCH + '{font-weight: bold; color: ' + style.COLOR_MATCH + ';}\n';
-  html += '.' + style.CLASS_EMPTY + '{font-weight: bold; color: ' + style.COLOR_EMPTY + ';}\n';
-  html += '.' + style.CLASS_NOMATCH + '{font-weight: bold; color: ' + style.COLOR_NOMATCH + ';}\n';
-  html += '.' + style.CLASS_LH_MATCH + '{font-weight: bold; color: ' + style.COLOR_LH_MATCH + ';}\n';
-  html += '.' + style.CLASS_LB_MATCH + '{font-weight: bold; color: ' + style.COLOR_LB_MATCH + ';}\n';
-  html += '.' + style.CLASS_REMAINDER + '{font-weight: bold; color: ' + style.COLOR_REMAINDER + ';}\n';
-  html += '.' + style.CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
-  html += '.' + style.CLASS_END + '{font-weight: bold; color: ' + style.COLOR_END + ';}\n';
-  html += '.' + style.CLASS_ERROR + '{font-weight: bold; color: ' + style.COLOR_ERROR + ';}\n';
-  html += '.' + style.CLASS_PHRASE + '{color: ' + style.COLOR_PHRASE + '; background-color: ' + style.COLOR_PHRASE_BG + ';}\n';
-  html += '.' + style.CLASS_EMPTY_PHRASE + '{color: ' + style.COLOR_EMPTY + ';}\n';
-  return html;
-}
-var leftTable = function(){
-  var html = "";
-  html += "." + style.CLASS_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LEFT_TABLE + " td{text-align:left;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var rightTable = function(){
-  var html = "";
-  html += "." + style.CLASS_RIGHT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_RIGHT_TABLE + ",\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " th,\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var lastLeft = function(){
-  var html = "";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " th:last-child{text-align:left;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " td:last-child{text-align:left;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var last2Left = function(){
-  var html = "";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' th:last-child{text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' th:nth-last-child(2){text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' td:last-child{text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' td:nth-last-child(2){text-align:left;}\n';
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-// Returns the content of a css file that can be used for apg & apg-exp HTML output.
-exports.css = function(){
-  var html = "";
-  html += classes();
-  html += leftTable();
-  html += rightTable();
-  html += lastLeft();
-  html += last2Left();
-  return html;
-}
-// Returns a "&lt;style>" block to define some APG standard styles in an HTML page.
-exports.styleClasses = function() {
-  var html = '<style>\n';
-  html += classes();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all columns left aligned
-exports.styleLeftTable = function() {
-  var html = '<style>\n';
-  html += leftTable();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all columns right aligned (0 left-aligned cols)
-exports.styleRightTable = function() {
-  var html = '<style>\n';
-  html += rightTable();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all but last columns right aligned (1 left-aligned col)
-exports.styleLastLeftTable = function() {
-  var html = '<style>\n';
-  html += lastLeft();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all but last 2 columns right aligned (2 left-aligned cols)
-exports.styleLast2LeftTable = function() {
-  var html = '<style>\n';
-  html += last2Left();
-  html += '</style>\n';
-  return html;
-}
+//var style = {
+//  /* classes */
+//  CLASS_ACTIVE : "apg-active",
+//  CLASS_MATCH : "apg-match",
+//  CLASS_NOMATCH : "apg-nomatch",
+//  CLASS_EMPTY : "apg-empty",
+//  CLASS_LOOKAHEAD : "apg-lh-match",
+//  CLASS_LOOKBEHIND : "apg-lb-match",
+//  CLASS_REMAINDER : "apg-remainder",
+//  CLASS_CTRLCHAR : "apg-ctrl-char",
+//  CLASS_LINEEND : "apg-line-end",
+//  CLASS_ERROR : "apg-error",
+//  CLASS_PHRASE : "apg-phrase",
+//  CLASS_EMPTYPHRASE : "apg-empty-phrase",
+//  CLASS_STATE : "apg-state",
+//  CLASS_STATS : "apg-stats",
+//  CLASS_TRACE : "apg-trace",
+//  CLASS_MONOSPACE : "apg-mono"
+//}
 // Generates a complete, minimal HTML5 page, inserting the user's HTML text on the page.
 // - *html* - the page text in HTML format
 // - *title* - the HTML page `<title>` - defaults to `htmlToPage`.
@@ -207,11 +77,12 @@ exports.htmlToPage = function(html, title) {
   page += '<head>\n';
   page += '<meta charset="utf-8">\n';
   page += '<title>' + title + '</title>\n';
-  page += exports.styleClasses();
-  page += exports.styleLeftTable();
-  page += exports.styleRightTable();
-  page += exports.styleLastLeftTable();
-  page += exports.styleLast2LeftTable();
+  page += '<link rel="stylesheet" href="apglib.css">\n';
+//  page += exports.styleClasses();
+//  page += exports.styleLeftTable();
+//  page += exports.styleRightTable();
+//  page += exports.styleLastLeftTable();
+//  page += exports.styleLast2LeftTable();
   page += '</head>\n<body>\n';
   page += '<p>' + new Date() + '</p>\n';
   page += html;
@@ -257,7 +128,7 @@ exports.parserResultToHtml = function(result, caption) {
     state = '<span class="' + style.CLASS_NOMATCH + '">unrecognized</span>';
   }
   var html = '';
-  html += '<table class="' + style.CLASS_LEFT_TABLE + '">\n';
+  html += '<table class="' + style.CLASS_STATE + '">\n';
   if (cap) {
     html += '<caption>' + cap + '</caption>\n';
   }
@@ -484,10 +355,10 @@ exports.charsToAsciiHtml = function(chars, beg, len) {
     char = chars[i];
     if (char < 32 || char === 127) {
       /* control characters */
-      html += '<span class="' + style.CLASS_CTRL + '">' + _this.asciiChars[char] + '</span>';
+      html += '<span class="' + style.CLASS_CTRLCHAR + '">' + _this.asciiChars[char] + '</span>';
     } else if (char > 127) {
       /* non-ASCII */
-      html += '<span class="' + style.CLASS_CTRL + '">' + 'U+' + _this.charToHex(char) + '</span>';
+      html += '<span class="' + style.CLASS_CTRLCHAR + '">' + 'U+' + _this.charToHex(char) + '</span>';
     } else {
       /* printing ASCII, 32 <= char <= 126 */
       html += _this.asciiChars[char];

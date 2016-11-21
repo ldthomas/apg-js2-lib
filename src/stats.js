@@ -10,7 +10,7 @@ module.exports = function() {
   var thisFileName = "stats.js: ";
   var id = require("./identifiers.js");
   var utils = require("./utilities");
-  var style = utils.styleNames;
+  var style = require("./style.js");
   var rules = [];
   var udts = [];
   var stats = [];
@@ -217,7 +217,7 @@ module.exports = function() {
   this.toHtml = function(type, caption) {
     var display = displayOpsOnly;
     var html = "";
-    html += '<table class="'+style.CLASS_RIGHT_TABLE+'">\n';
+    html += '<table class="'+style.CLASS_STATS+'">\n';
     if (typeof (caption) === "string") {
       html += '<caption>' + caption + '</caption>\n';
     }
