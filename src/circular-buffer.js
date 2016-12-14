@@ -14,8 +14,7 @@ module.exports = function() {
   // *size* is `maxListSize`, the maximum number of records saved before overwriting begins.
   this.init = function(size) {
     if (typeof (size) !== "number" || size <= 0) {
-      throw new Error(thisFileName
-          + "init: circular buffer size must an integer > 0")
+      throw new Error(thisFileName + "init: circular buffer size must an integer > 0")
     }
     maxListSize = Math.ceil(size);
     itemIndex = -1;
@@ -26,7 +25,7 @@ module.exports = function() {
     itemIndex += 1;
     return (itemIndex + maxListSize) % maxListSize;
   };
-  // Returns `maxListSize` - the maximum number of records to keep in the buffer. 
+  // Returns `maxListSize` - the maximum number of records to keep in the buffer.
   this.maxSize = function() {
     return maxListSize;
   }
@@ -56,17 +55,18 @@ module.exports = function() {
     if (itemIndex === -1) {
       /* no records have been collected */
       return;
-    } else if (itemIndex < maxListSize) {
+    }
+    if (itemIndex < maxListSize) {
       /* fewer than maxListSize records have been collected - number of items = number of records */
       for (var i = 0; i <= itemIndex; i += 1) {
         fn(i, i);
       }
-    } else {
-      /* start with the oldest record saved and finish with the most recent record saved */
-      for (var i = itemIndex - maxListSize + 1; i <= itemIndex; i += 1) {
-        var listIndex = (i + maxListSize) % maxListSize;
-        fn(listIndex, i);
-      }
+      return;
+    }
+    /* start with the oldest record saved and finish with the most recent record saved */
+    for (var i = itemIndex - maxListSize + 1; i <= itemIndex; i += 1) {
+      var listIndex = (i + maxListSize) % maxListSize;
+      fn(listIndex, i);
     }
   }
 }

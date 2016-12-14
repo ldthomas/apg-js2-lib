@@ -73,6 +73,8 @@ module.exports = function() {
     stats[id.BKR] = new emptyStat();
     stats[id.BKA] = new emptyStat();
     stats[id.BKN] = new emptyStat();
+    stats[id.ABG] = new emptyStat();
+    stats[id.AEN] = new emptyStat();
     ruleStats.length = 0;
     for (var i = 0; i < rules.length; i += 1) {
       ruleStats.push({
@@ -145,6 +147,8 @@ module.exports = function() {
     html += displayRow("BKR", stats[id.BKR]);
     html += displayRow("BKA", stats[id.BKA]);
     html += displayRow("BKN", stats[id.BKN]);
+    html += displayRow("ABG", stats[id.ABG]);
+    html += displayRow("AEN", stats[id.AEN]);
     html += displayRow("totals", totals);
     return html;
   }
@@ -268,7 +272,7 @@ module.exports = function() {
       }
       break;
     }
-    html += "</table><br>\n";
+    html += "</table>\n";
     return html;
   }
   // Display the stats table in a complete HTML5 page.

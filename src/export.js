@@ -14,3 +14,5 @@ exports.parser = require("./parser.js");
 exports.stats = require("./stats.js");
 exports.trace = require("./trace.js");
 exports.utils = require("./utilities.js");
+exports.emitcss = require("./emitcss.js");
+exports.style = require("./style.js");

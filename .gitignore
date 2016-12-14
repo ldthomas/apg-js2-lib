@@ -8,13 +8,10 @@
 gulpfile.js
 *.html
 cmsg
-js-gen
-css-gen
 **html/
 **RemoteSystemsTempFiles/
-**workfiles/
 **node_modules/
-**test/
 **docs/
 **style/
+**dev/
 
