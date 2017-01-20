@@ -5,13 +5,14 @@
 *.out
 *.zip
 *.tgz
-gulpfile.js
 *.html
 cmsg
+build
 **html/
 **RemoteSystemsTempFiles/
 **node_modules/
 **docs/
-**style/
+**test/
+**work/
 **dev/
 

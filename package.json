@@ -19,6 +19,9 @@
     "generator",
     "ABNF"
   ],
+  "dependencies": {
+    "apg-conv": "*"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/ldthomas/apg-js2-lib.git"

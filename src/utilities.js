@@ -4,6 +4,7 @@
 "use strict";
 var thisFileName = "utilities.js: ";
 var style = require('./style.js');
+var converter = require("apg-conv");
 var _this = this;
 /* translate (implied) phrase beginning character and length to actual first and last character indexes */
 /* used by multiple phrase handling functions */
@@ -159,33 +160,37 @@ exports.parserResultToHtml = function(result, caption) {
 // Translates a sub-array of integer character codes into a string.
 // Very useful in callback functions to translate the matched phrases into strings.
 exports.charsToString = function(chars, phraseIndex, phraseLength) {
-  var string = '';
-  if (Array.isArray(chars)) {
-    var charIndex = (typeof (phraseIndex) === 'number') ? phraseIndex : 0;
-    var charLength = (typeof (phraseLength) === 'number') ? phraseLength : chars.length;
-    if (charLength > chars.length) {
-      charLength = chars.length;
-    }
-    var charEnd = charIndex + charLength;
-    for (var i = charIndex; i < charEnd; i += 1) {
-      if (chars[i]) {
-        string += String.fromCharCode(chars[i]);
-      }
-    }
-  }
-  return string;
+  var ar = chars.slice(phraseIndex, phraseIndex+phraseLength);
+  var buf = converter.encode("UTF16LE", ar);
+  return buf.toString("utf16le");
+//  var string = '';
+//  if (Array.isArray(chars)) {
+//    var charIndex = (typeof (phraseIndex) === 'number') ? phraseIndex : 0;
+//    var charLength = (typeof (phraseLength) === 'number') ? phraseLength : chars.length;
+//    if (charLength > chars.length) {
+//      charLength = chars.length;
+//    }
+//    var charEnd = charIndex + charLength;
+//    for (var i = charIndex; i < charEnd; i += 1) {
+//      if (chars[i]) {
+//        string += String.fromCharCode(chars[i]);
+//      }
+//    }
+//  }
+//  return string;
 }
 // Translates a string into an array of integer character codes.
 exports.stringToChars = function(string) {
-  var chars = [];
-  if (typeof (string) === 'string') {
-    var charIndex = 0;
-    while (charIndex < string.length) {
-      chars[charIndex] = string.charCodeAt(charIndex);
-      charIndex += 1;
-    }
-  }
-  return chars;
+  return converter.decode("STRING", string);
+//  var chars = [];
+//  if (typeof (string) === 'string') {
+//    var charIndex = 0;
+//    while (charIndex < string.length) {
+//      chars[charIndex] = string.charCodeAt(charIndex);
+//      charIndex += 1;
+//    }
+//  }
+//  return chars;
 }
 // Translates an opcode identifier into a human-readable string.
 exports.opcodeToString = function(type) {
@@ -368,6 +373,7 @@ exports.charsToAsciiHtml = function(chars, beg, len) {
 }
 //Translates a JavaScript string to HTML display format.
 exports.stringToAsciiHtml = function(str){
-  var chars = this.stringToChars(str);
+  var chars = converter.decode("STRING", str);
+//  var chars = this.stringToChars(str);
   return this.charsToAsciiHtml(chars);
 }

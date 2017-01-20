@@ -14,6 +14,7 @@ module.exports = function() {
   var _this = this;
   var id = require("./identifiers.js");
   var utils = require("./utilities.js");
+  var converter = require("apg-conv");
   this.ast = null;
   this.stats = null;
   this.trace = null;
@@ -264,7 +265,7 @@ module.exports = function() {
   /* (the grammar object generated previously by apg) */
   var initializeGrammar = function(grammar) {
     var functionName = thisFileName + "initializeGrammar(): ";
-    if (grammar === undefined || grammar === null) {
+    if (!grammar) {
       throw new Error(functionName + "grammar object undefined");
     }
     if (grammar.grammarObject !== "grammarObject") {
@@ -361,12 +362,12 @@ module.exports = function() {
       list.push(udts[i].lower);
     }
     for ( var index in _this.callbacks) {
-      i = list.indexOf(index);
+      i = list.indexOf(index.toLowerCase());
       if (i < 0) {
         throw new Error(functionName + "syntax callback '" + index + "' not a rule or udt name");
       }
       func = _this.callbacks[index];
-      if (func === false) {
+      if (!func) {
         func = null;
       }
       if (typeof (func) === "function" || func === null) {
@@ -376,7 +377,7 @@ module.exports = function() {
           udtCallbacks[i - rules.length] = func;
         }
       } else {
-        throw new Error(functionName + "syntax callback[" + index + "] must be function reference or 'false'");
+        throw new Error(functionName + "syntax callback[" + index + "] must be function reference or 'false' (false/null/undefined/etc.)");
       }
     }
     /* make sure all udts have been defined - the parser can't work without them */
