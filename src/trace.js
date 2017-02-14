@@ -69,15 +69,15 @@ module.exports = function() {
   var MAX_PHRASE = 80;
   var MAX_TLS = 5;
   var utils = require("./utilities.js");
-  var style = utils.styleNames;
+  var style = require("./style.js");
   var circular = new (require("./circular-buffer.js"))();
   var id = require("./identifiers.js");
-  var lines = [];
-  var maxLines = 5000;
-  var totalRecords = 0;
+  var records = [];
+  var maxRecords = 5000;
+  var lastRecord = -1;
   var filteredRecords = 0;
   var treeDepth = 0;
-  var lineStack = [];
+  var recordStack = [];
   var chars = null;
   var rules = null;
   var udts = null;
@@ -86,8 +86,8 @@ module.exports = function() {
   /* special trace table phrases */
   var PHRASE_END_CHAR = "&bull;";
   var PHRASE_CONTINUE_CHAR = "&hellip;";
-  var PHRASE_END = '<span class="' + style.CLASS_END + '">&bull;</span>';
-  var PHRASE_CONTINUE = '<span class="' + style.CLASS_END + '">&hellip;</span>';
+  var PHRASE_END = '<span class="' + style.CLASS_LINEEND + '">&bull;</span>';
+  var PHRASE_CONTINUE = '<span class="' + style.CLASS_LINEEND + '">&hellip;</span>';
   var PHRASE_EMPTY = '<span class="' + style.CLASS_EMPTY + '">&#120634;</span>';
   var PHRASE_NOMATCH = '<span class="' + style.CLASS_NOMATCH + '">&#120636;</span>';
   /* filter the non-RNM & non-UDT operators */
@@ -107,66 +107,61 @@ module.exports = function() {
       operatorFilter[id.ABG] = set;
       operatorFilter[id.AEN] = set;
     }
-    var all, items = 0;
+    var items = 0;
     for ( var name in that.filter.operators) {
       items += 1;
     }
     if (items === 0) {
       /* case 1: no operators specified: default: do not trace any operators */
       setOperators(false);
-    } else {
-      all = false;
-      for ( var name in that.filter.operators) {
-        var upper = name.toUpperCase();
-        if (upper === '<ALL>') {
-          /* case 2: <all> operators specified: trace all operators ignore all other operator commands */
-          setOperators(true);
-          all = true;
-          break;
-        }
-        if (upper === '<NONE>') {
-          /* case 3: <none> operators specified: trace NO operators ignore all other operator commands */
-          setOperators(false);
-          all = true;
-          break;
-        }
+      return;
+    }
+    for ( var name in that.filter.operators) {
+      var upper = name.toUpperCase();
+      if (upper === '<ALL>') {
+        /* case 2: <all> operators specified: trace all operators ignore all other operator commands */
+        setOperators(true);
+        return;
       }
-      if (all === false) {
+      if (upper === '<NONE>') {
+        /* case 3: <none> operators specified: trace NO operators ignore all other operator commands */
         setOperators(false);
-        for ( var name in that.filter.operators) {
-          var upper = name.toUpperCase();
-          /* case 4: one or more individual operators specified: trace specified operators only */
-          if (upper === 'ALT') {
-            operatorFilter[id.ALT] = true;
-          } else if (upper === 'CAT') {
-            operatorFilter[id.CAT] = true;
-          } else if (upper === 'REP') {
-            operatorFilter[id.REP] = true;
-          } else if (upper === 'AND') {
-            operatorFilter[id.AND] = true;
-          } else if (upper === 'NOT') {
-            operatorFilter[id.NOT] = true;
-          } else if (upper === 'TLS') {
-            operatorFilter[id.TLS] = true;
-          } else if (upper === 'TBS') {
-            operatorFilter[id.TBS] = true;
-          } else if (upper === 'TRG') {
-            operatorFilter[id.TRG] = true;
-          } else if (upper === 'BKR') {
-            operatorFilter[id.BKR] = true;
-          } else if (upper === 'BKA') {
-            operatorFilter[id.BKA] = true;
-          } else if (upper === 'BKN') {
-            operatorFilter[id.BKN] = true;
-          } else if (upper === 'ABG') {
-            operatorFilter[id.ABG] = true;
-          } else if (upper === 'AEN') {
-            operatorFilter[id.AEN] = true;
-          } else {
-            throw new Error(thisFileName + "initOpratorFilter: '" + name + "' not a valid operator name."
-                + " Must be <all>, <none>, alt, cat, rep, tls, tbs, trg, and, not, bkr, bka or bkn");
-          }
-        }
+        return;
+      }
+    }
+    setOperators(false);
+    for ( var name in that.filter.operators) {
+      var upper = name.toUpperCase();
+      /* case 4: one or more individual operators specified: trace 'true' operators only */
+      if (upper === 'ALT') {
+        operatorFilter[id.ALT] = (that.filter.operators[name] === true) ? true: false;
+      } else if (upper === 'CAT') {
+        operatorFilter[id.CAT] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'REP') {
+        operatorFilter[id.REP] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'AND') {
+        operatorFilter[id.AND] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'NOT') {
+        operatorFilter[id.NOT] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'TLS') {
+        operatorFilter[id.TLS] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'TBS') {
+        operatorFilter[id.TBS] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'TRG') {
+        operatorFilter[id.TRG] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'BKR') {
+        operatorFilter[id.BKR] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'BKA') {
+        operatorFilter[id.BKA] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'BKN') {
+        operatorFilter[id.BKN] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'ABG') {
+        operatorFilter[id.ABG] = (that.filter.operators[name] === true) ? true: false;;
+      } else if (upper === 'AEN') {
+        operatorFilter[id.AEN] = (that.filter.operators[name] === true) ? true: false;;
+      } else {
+        throw new Error(thisFileName + "initOpratorFilter: '" + name + "' not a valid operator name."
+            + " Must be <all>, <none>, alt, cat, rep, tls, tbs, trg, and, not, bkr, bka or bkn");
       }
     }
   }
@@ -181,7 +176,7 @@ module.exports = function() {
         ruleFilter.push(set);
       }
     }
-    var all, items, i, list = [];
+    var items, i, list = [];
     for (i = 0; i < rules.length; i += 1) {
       list.push(rules[i].lower);
     }
@@ -196,37 +191,32 @@ module.exports = function() {
     if (items === 0) {
       /* case 1: default to all rules & udts */
       setRules(true);
-    } else {
-      all = false;
-      for ( var name in that.filter.rules) {
-        var lower = name.toLowerCase();
-        if (lower === '<all>') {
-          /* case 2: trace all rules ignore all other rule commands */
-          setRules(true);
-          all = true;
-          break;
-        }
-        if (lower === '<none>') {
-          /* case 3: trace no rules */
-          setRules(false);
-          all = true;
-          break;
-        }
+      return;
+    }
+    for ( var name in that.filter.rules) {
+      var lower = name.toLowerCase();
+      if (lower === '<all>') {
+        /* case 2: trace all rules ignore all other rule commands */
+        setRules(true);
+        return;
       }
-      if (all === false) {
-        /* case 4: trace only individually specified rules */
+      if (lower === '<none>') {
+        /* case 3: trace no rules */
         setRules(false);
-        for ( var name in that.filter.rules) {
-          var lower = name.toLowerCase();
-          i = list.indexOf(lower);
-          if (i < 0) {
-            throw new Error(thisFileName + "initRuleFilter: '" + name + "' not a valid rule or udt name");
-          }
-          ruleFilter[i] = true;
-        }
-        operatorFilter[id.RNM] = true;
-        operatorFilter[id.UDT] = true;
+        return;
       }
+    }
+    /* case 4: trace only individually specified rules */
+    setRules(false);
+    operatorFilter[id.RNM] = true;
+    operatorFilter[id.UDT] = true;
+    for ( var name in that.filter.rules) {
+      var lower = name.toLowerCase();
+      i = list.indexOf(lower);
+      if (i < 0) {
+        throw new Error(thisFileName + "initRuleFilter: '" + name + "' not a valid rule or udt name");
+      }
+      ruleFilter[i] = (that.filter.rules[name] === true) ? true: false;;
     }
   }
   /* used by other APG components to verify that they have a valid trace object */
@@ -236,22 +226,29 @@ module.exports = function() {
     rules : []
   }
   // Set the maximum number of records to keep (default = 5000).
-  // Each record number larger than `maxLines`
+  // Each record number larger than `maxRecords`
   // will result in deleting the previously oldest record.
-  this.setMaxRecords = function(max) {
+  this.setMaxRecords = function(max, last) {
     if (typeof (max) === "number" && max > 0) {
-      maxLines = Math.ceil(max);
+      maxRecords = Math.ceil(max);
+    }
+    if(typeof(last) === "number"){
+      lastRecord = Math.floor(last);
+      if(lastRecord < 0){
+        lastRecord = -1;
+      }else if(lastRecord < maxRecords){
+        lastRecord = maxRecords;
+      }
     }
   }
-  // Returns `maxLines` to the caller.
+  // Returns `maxRecords` to the caller.
   this.getMaxRecords = function() {
-    return maxLines;
+    return maxRecords;
   }
   /* Called only by the `parser.js` object. No verification of input. */
   this.init = function(rulesIn, udtsIn, charsIn) {
-    lines.length = 0;
-    lineStack.length = 0;
-    totalRecords = 0;
+    records.length = 0;
+    recordStack.length = 0;
     filteredRecords = 0;
     treeDepth = 0;
     chars = charsIn;
@@ -259,10 +256,10 @@ module.exports = function() {
     udts = udtsIn;
     initOperatorFilter();
     initRuleFilter();
-    circular.init(maxLines);
+    circular.init(maxRecords);
   };
   /* returns true if this records passes through the designated filter, false if the record is to be skipped */
-  var filter = function(op) {
+  var filterOps = function(op) {
     var ret = false;
     if (op.type === id.RNM) {
       if (operatorFilter[op.type] && ruleFilter[op.index]) {
@@ -281,13 +278,17 @@ module.exports = function() {
     }
     return ret;
   }
+  var filterRecords = function(record){
+    if((lastRecord === -1) || (record <= lastRecord)){
+      return true;
+    }
+    return false;
+  }
   /* Collect the "down" record. */
-  this.down = function(op, state, offset, length,
-      anchor, lookAround) {
-    totalRecords += 1;
-    if (filter(op)) {
-      lineStack.push(filteredRecords);
-      lines[circular.increment()] = {
+  this.down = function(op, state, offset, length, anchor, lookAround) {
+    if (filterRecords(filteredRecords) && filterOps(op)) {
+      recordStack.push(filteredRecords);
+      records[circular.increment()] = {
         dirUp : false,
         depth : treeDepth,
         thisLine : filteredRecords,
@@ -304,18 +305,16 @@ module.exports = function() {
     }
   };
   /* Collect the "up" record. */
-  this.up = function(op, state, offset, length,
-      anchor, lookAround) {
-    totalRecords += 1;
-    if (filter(op)) {
+  this.up = function(op, state, offset, length, anchor, lookAround) {
+    if (filterRecords(filteredRecords) && filterOps(op)) {
       var thisLine = filteredRecords;
-      var thatLine = lineStack.pop();
+      var thatLine = recordStack.pop();
       var thatRecord = circular.getListIndex(thatLine);
       if (thatRecord !== -1) {
-        lines[thatRecord].thatLine = thisLine;
+        records[thatRecord].thatLine = thisLine;
       }
       treeDepth -= 1;
-      lines[circular.increment()] = {
+      records[circular.increment()] = {
         dirUp : true,
         depth : treeDepth,
         thisLine : thisLine,
@@ -383,10 +382,8 @@ module.exports = function() {
     }
     var title = "trace";
     var header = '';
-    header += '<h1>JavaScript APG Trace</h1>\n';
-    header += '<h3>&nbsp;&nbsp;&nbsp;&nbsp;display mode: ' + modeName + '</h3>\n';
-    header += '<h5>&nbsp;&nbsp;&nbsp;&nbsp;' + new Date() + '</h5>\n';
-    header += '<table class="'+style.CLASS_LAST2_LEFT_TABLE+'">\n';
+    header += '<p>display mode: ' + modeName + '</p>\n';
+    header += '<table class="'+style.CLASS_TRACE+'">\n';
     if (typeof (caption) === "string") {
       header += '<caption>' + caption + '</caption>';
     }
@@ -412,13 +409,13 @@ module.exports = function() {
     footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE + ' characters of the phrase being matched<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH
     + '">matched characters</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LH_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKAHEAD
     + '">matched characters in look ahead mode</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LB_MATCH
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKBEHIND
     + '">matched characters in look behind mode</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_REMAINDER
         + '">remainder characters(not yet examined by parser)</span><br>\n';
-    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRL
+    footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRLCHAR
         + '">control characters, TAB, LF, CR, etc. (ASCII mode only)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_EMPTY + ' empty string<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_END + ' end of input string<br>\n';
@@ -457,7 +454,7 @@ module.exports = function() {
     html += '<tr><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th>';
     html += '<th>operator</th><th>phrase</th></tr>\n';
     circular.forEach(function(lineIndex, index) {
-      var line = lines[lineIndex];
+      var line = records[lineIndex];
       thisLine = line.thisLine;
       thatLine = (line.thatLine !== undefined) ? line.thatLine : '--';
       lookAhead = false;
@@ -512,9 +509,9 @@ module.exports = function() {
       html += '<td>';
       html += that.indent(line.depth);
       if (lookAhead) {
-        html += '<span class="' + style.CLASS_LH_MATCH + '">';
+        html += '<span class="' + style.CLASS_LOOKAHEAD + '">';
       }else  if (lookBehind) {
-        html += '<span class="' + style.CLASS_LB_MATCH + '">';
+        html += '<span class="' + style.CLASS_LOOKBEHIND + '">';
       }
       html += utils.opcodeToString(line.opcode.type);
       if (line.opcode.type === id.RNM) {
@@ -704,7 +701,7 @@ module.exports = function() {
     var html = '';
     var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
-    var spanBehind = '<span class="' + style.CLASS_LB_MATCH + '">';
+    var spanBehind = '<span class="' + style.CLASS_LOOKBEHIND + '">';
     var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
     var spanend = '</span>';
     var prev = false;
@@ -744,7 +741,7 @@ module.exports = function() {
   }
   /* display phrases matched in look-ahead mode */
   var displayAhead = function(mode, chars, state, index, length) {
-    var spanAhead = '<span class="' + style.CLASS_LH_MATCH + '">';
+    var spanAhead = '<span class="' + style.CLASS_LOOKAHEAD + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
   }
   /* display phrases matched in normal parsing mode */

@@ -5,13 +5,14 @@
 *.out
 *.zip
 *.tgz
+*.html
 cmsg
-js-gen
-css-gen
+build
 **html/
 **RemoteSystemsTempFiles/
-**workfiles/
 **node_modules/
-**test/
 **docs/
+**test/
+**work/
+**dev/
 

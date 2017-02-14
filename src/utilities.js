@@ -3,6 +3,8 @@
 // and the generated parser applications.
 "use strict";
 var thisFileName = "utilities.js: ";
+var style = require('./style.js');
+var converter = require("apg-conv");
 var _this = this;
 /* translate (implied) phrase beginning character and length to actual first and last character indexes */
 /* used by multiple phrase handling functions */
@@ -40,147 +42,6 @@ var getBounds = function(length, beg, len) {
     end : end
   };
 }
-// Define a standard set of colors and classes for HTML display of results.
-var style = {
-  /* colors */
-  COLOR_ACTIVE : "#000000",
-  COLOR_MATCH : "#264BFF",
-  COLOR_EMPTY : "#0fbd0f",
-  COLOR_NOMATCH : "#FF4000",
-  COLOR_LH_MATCH : "#1A97BA",
-  COLOR_LB_MATCH : "#5F1687",
-  COLOR_LH_NOMATCH : "#FF8000",
-  COLOR_LB_NOMATCH : "#e6ac00",
-  COLOR_END : "#000000",
-  COLOR_CTRL : "#000000",
-  COLOR_REMAINDER : "#999999",
-  COLOR_TEXT : "#000000",
-  COLOR_BACKGROUND : "#FFFFFF",
-  COLOR_BORDER : "#000000",
-  /* color classes */
-  CLASS_ACTIVE : "apg-active",
-  CLASS_MATCH : "apg-match",
-  CLASS_NOMATCH : "apg-nomatch",
-  CLASS_EMPTY : "apg-empty",
-  CLASS_LH_MATCH : "apg-lh-match",
-  CLASS_LB_MATCH : "apg-lb-match",
-  CLASS_REMAINDER : "apg-remainder",
-  CLASS_CTRL : "apg-ctrl-char",
-  CLASS_END : "apg-line-end",
-  /* table classes */
-  CLASS_LEFT_TABLE : "apg-left-table",
-  CLASS_RIGHT_TABLE : "apg-right-table",
-  CLASS_LAST_LEFT_TABLE : "apg-last-left-table",
-  CLASS_LAST2_LEFT_TABLE : "apg-last2-left-table",
-  /* text classes */
-  CLASS_MONOSPACE : "apg-mono"
-}
-exports.styleNames = style;
-var classes = function(){
-  var html = "";
-  html += '.' + style.CLASS_MONOSPACE + '{font-family: monospace;}\n';
-  html += '.' + style.CLASS_ACTIVE + '{font-weight: bold; color: ' + style.COLOR_TEXT + ';}\n';
-  html += '.' + style.CLASS_MATCH + '{font-weight: bold; color: ' + style.COLOR_MATCH + ';}\n';
-  html += '.' + style.CLASS_EMPTY + '{font-weight: bold; color: ' + style.COLOR_EMPTY + ';}\n';
-  html += '.' + style.CLASS_NOMATCH + '{font-weight: bold; color: ' + style.COLOR_NOMATCH + ';}\n';
-  html += '.' + style.CLASS_LH_MATCH + '{font-weight: bold; color: ' + style.COLOR_LH_MATCH + ';}\n';
-  html += '.' + style.CLASS_LB_MATCH + '{font-weight: bold; color: ' + style.COLOR_LB_MATCH + ';}\n';
-  html += '.' + style.CLASS_REMAINDER + '{font-weight: bold; color: ' + style.COLOR_REMAINDER + ';}\n';
-  html += '.' + style.CLASS_CTRL + '{font-weight: bolder; font-style: italic; font-size: .6em;}\n';
-  html += '.' + style.CLASS_END + '{font-weight: bold; color: ' + style.COLOR_END + ';}\n';
-  return html;
-}
-var leftTable = function(){
-  var html = "";
-  html += "." + style.CLASS_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LEFT_TABLE + " td{text-align:left;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var rightTable = function(){
-  var html = "";
-  html += "." + style.CLASS_RIGHT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_RIGHT_TABLE + ",\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " th,\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_RIGHT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var lastLeft = function(){
-  var html = "";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " th:last-child{text-align:left;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " td:last-child{text-align:left;}\n";
-  html += "." + style.CLASS_LAST_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-var last2Left = function(){
-  var html = "";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + "{font-family:monospace;}\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + ",\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " th,\n";
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " td{text-align:right;border:1px solid black;border-collapse:collapse;}\n";
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' th:last-child{text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' th:nth-last-child(2){text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' td:last-child{text-align:left;}\n';
-  html += '.' + style.CLASS_LAST2_LEFT_TABLE + ' td:nth-last-child(2){text-align:left;}\n';
-  html += "." + style.CLASS_LAST2_LEFT_TABLE + " caption";
-  html += "{font-size:125%;font-weight:bold;text-align:left;}\n";
-  return html;
-}
-// Returns the content of a css file that can be used for apg & apg-exp HTML output.
-exports.css = function(){
-  var html = "";
-  html += classes();
-  html += leftTable();
-  html += rightTable();
-  html += lastLeft();
-  html += last2Left();
-  return html;
-}
-// Returns a "&lt;style>" block to define some APG standard styles in an HTML page.
-exports.styleClasses = function() {
-  var html = '<style>\n';
-  html += classes();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all columns left aligned
-exports.styleLeftTable = function() {
-  var html = '<style>\n';
-  html += leftTable();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all columns right aligned (0 left-aligned cols)
-exports.styleRightTable = function() {
-  var html = '<style>\n';
-  html += rightTable();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all but last columns right aligned (1 left-aligned col)
-exports.styleLastLeftTable = function() {
-  var html = '<style>\n';
-  html += lastLeft();
-  html += '</style>\n';
-  return html;
-}
-// Returns a table "&lt;style>" block for all but last 2 columns right aligned (2 left-aligned cols)
-exports.styleLast2LeftTable = function() {
-  var html = '<style>\n';
-  html += last2Left();
-  html += '</style>\n';
-  return html;
-}
 // Generates a complete, minimal HTML5 page, inserting the user's HTML text on the page.
 // - *html* - the page text in HTML format
 // - *title* - the HTML page `<title>` - defaults to `htmlToPage`.
@@ -198,11 +59,7 @@ exports.htmlToPage = function(html, title) {
   page += '<head>\n';
   page += '<meta charset="utf-8">\n';
   page += '<title>' + title + '</title>\n';
-  page += exports.styleClasses();
-  page += exports.styleLeftTable();
-  page += exports.styleRightTable();
-  page += exports.styleLastLeftTable();
-  page += exports.styleLast2LeftTable();
+  page += '<link rel="stylesheet" href="apglib.css">\n';
   page += '</head>\n<body>\n';
   page += '<p>' + new Date() + '</p>\n';
   page += html;
@@ -248,7 +105,7 @@ exports.parserResultToHtml = function(result, caption) {
     state = '<span class="' + style.CLASS_NOMATCH + '">unrecognized</span>';
   }
   var html = '';
-  html += '<p><table class="' + style.CLASS_LEFT_TABLE + '">\n';
+  html += '<table class="' + style.CLASS_STATE + '">\n';
   if (cap) {
     html += '<caption>' + cap + '</caption>\n';
   }
@@ -273,39 +130,19 @@ exports.parserResultToHtml = function(result, caption) {
   html += '<tr><td>sub-string begin</td><td>' + result.subBegin + '</td><td>sub-string first character index</td></tr>\n';
   html += '<tr><td>sub-string end</td><td>' + result.subEnd + '</td><td>sub-string end-of-string index</td></tr>\n';
   html += '<tr><td>sub-string length</td><td>' + result.subLength + '</td><td>sub-string length</td></tr>\n';
-  html += '</table></p>\n';
+  html += '</table>\n';
   return html;
 }
 // Translates a sub-array of integer character codes into a string.
 // Very useful in callback functions to translate the matched phrases into strings.
 exports.charsToString = function(chars, phraseIndex, phraseLength) {
-  var string = '';
-  if (Array.isArray(chars)) {
-    var charIndex = (typeof (phraseIndex) === 'number') ? phraseIndex : 0;
-    var charLength = (typeof (phraseLength) === 'number') ? phraseLength : chars.length;
-    if (charLength > chars.length) {
-      charLength = chars.length;
-    }
-    var charEnd = charIndex + charLength;
-    for (var i = charIndex; i < charEnd; i += 1) {
-      if (chars[i]) {
-        string += String.fromCharCode(chars[i]);
-      }
-    }
-  }
-  return string;
+  var ar = chars.slice(phraseIndex, phraseIndex+phraseLength);
+  var buf = converter.encode("UTF16LE", ar);
+  return buf.toString("utf16le");
 }
 // Translates a string into an array of integer character codes.
 exports.stringToChars = function(string) {
-  var chars = [];
-  if (typeof (string) === 'string') {
-    var charIndex = 0;
-    while (charIndex < string.length) {
-      chars[charIndex] = string.charCodeAt(charIndex);
-      charIndex += 1;
-    }
-  }
-  return chars;
+  return converter.decode("STRING", string);
 }
 // Translates an opcode identifier into a human-readable string.
 exports.opcodeToString = function(type) {
@@ -475,10 +312,10 @@ exports.charsToAsciiHtml = function(chars, beg, len) {
     char = chars[i];
     if (char < 32 || char === 127) {
       /* control characters */
-      html += '<span class="' + style.CLASS_CTRL + '">' + _this.asciiChars[char] + '</span>';
+      html += '<span class="' + style.CLASS_CTRLCHAR + '">' + _this.asciiChars[char] + '</span>';
     } else if (char > 127) {
       /* non-ASCII */
-      html += '<span class="' + style.CLASS_CTRL + '">' + 'U+' + _this.charToHex(char) + '</span>';
+      html += '<span class="' + style.CLASS_CTRLCHAR + '">' + 'U+' + _this.charToHex(char) + '</span>';
     } else {
       /* printing ASCII, 32 <= char <= 126 */
       html += _this.asciiChars[char];
@@ -488,6 +325,7 @@ exports.charsToAsciiHtml = function(chars, beg, len) {
 }
 //Translates a JavaScript string to HTML display format.
 exports.stringToAsciiHtml = function(str){
-  var chars = this.stringToChars(str);
+  var chars = converter.decode("STRING", str);
+//  var chars = this.stringToChars(str);
   return this.charsToAsciiHtml(chars);
 }

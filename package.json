@@ -10,6 +10,8 @@
     "src",
     "apglib.js",
     "apglib.css",
+    "apglib-min.js",
+    "apglib-min.css",
     "index.md",
     "docco-gen"
   ],
@@ -19,6 +21,9 @@
     "generator",
     "ABNF"
   ],
+  "dependencies": {
+    "apg-conv": "1.x"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/ldthomas/apg-js2-lib.git"
