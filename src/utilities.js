@@ -42,25 +42,6 @@ var getBounds = function(length, beg, len) {
     end : end
   };
 }
-//var style = {
-//  /* classes */
-//  CLASS_ACTIVE : "apg-active",
-//  CLASS_MATCH : "apg-match",
-//  CLASS_NOMATCH : "apg-nomatch",
-//  CLASS_EMPTY : "apg-empty",
-//  CLASS_LOOKAHEAD : "apg-lh-match",
-//  CLASS_LOOKBEHIND : "apg-lb-match",
-//  CLASS_REMAINDER : "apg-remainder",
-//  CLASS_CTRLCHAR : "apg-ctrl-char",
-//  CLASS_LINEEND : "apg-line-end",
-//  CLASS_ERROR : "apg-error",
-//  CLASS_PHRASE : "apg-phrase",
-//  CLASS_EMPTYPHRASE : "apg-empty-phrase",
-//  CLASS_STATE : "apg-state",
-//  CLASS_STATS : "apg-stats",
-//  CLASS_TRACE : "apg-trace",
-//  CLASS_MONOSPACE : "apg-mono"
-//}
 // Generates a complete, minimal HTML5 page, inserting the user's HTML text on the page.
 // - *html* - the page text in HTML format
 // - *title* - the HTML page `<title>` - defaults to `htmlToPage`.
@@ -79,11 +60,6 @@ exports.htmlToPage = function(html, title) {
   page += '<meta charset="utf-8">\n';
   page += '<title>' + title + '</title>\n';
   page += '<link rel="stylesheet" href="apglib.css">\n';
-//  page += exports.styleClasses();
-//  page += exports.styleLeftTable();
-//  page += exports.styleRightTable();
-//  page += exports.styleLastLeftTable();
-//  page += exports.styleLast2LeftTable();
   page += '</head>\n<body>\n';
   page += '<p>' + new Date() + '</p>\n';
   page += html;
@@ -163,34 +139,10 @@ exports.charsToString = function(chars, phraseIndex, phraseLength) {
   var ar = chars.slice(phraseIndex, phraseIndex+phraseLength);
   var buf = converter.encode("UTF16LE", ar);
   return buf.toString("utf16le");
-//  var string = '';
-//  if (Array.isArray(chars)) {
-//    var charIndex = (typeof (phraseIndex) === 'number') ? phraseIndex : 0;
-//    var charLength = (typeof (phraseLength) === 'number') ? phraseLength : chars.length;
-//    if (charLength > chars.length) {
-//      charLength = chars.length;
-//    }
-//    var charEnd = charIndex + charLength;
-//    for (var i = charIndex; i < charEnd; i += 1) {
-//      if (chars[i]) {
-//        string += String.fromCharCode(chars[i]);
-//      }
-//    }
-//  }
-//  return string;
 }
 // Translates a string into an array of integer character codes.
 exports.stringToChars = function(string) {
   return converter.decode("STRING", string);
-//  var chars = [];
-//  if (typeof (string) === 'string') {
-//    var charIndex = 0;
-//    while (charIndex < string.length) {
-//      chars[charIndex] = string.charCodeAt(charIndex);
-//      charIndex += 1;
-//    }
-//  }
-//  return chars;
 }
 // Translates an opcode identifier into a human-readable string.
 exports.opcodeToString = function(type) {

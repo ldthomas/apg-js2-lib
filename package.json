@@ -10,6 +10,8 @@
     "src",
     "apglib.js",
     "apglib.css",
+    "apglib-min.js",
+    "apglib-min.css",
     "index.md",
     "docco-gen"
   ],
@@ -20,7 +22,7 @@
     "ABNF"
   ],
   "dependencies": {
-    "apg-conv": "*"
+    "apg-conv": "1.x"
   },
   "repository": {
     "type": "git",
