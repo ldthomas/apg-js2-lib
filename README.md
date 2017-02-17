@@ -36,14 +36,13 @@ or
 <script src="./apg-dir/apglib-min.js" charset="utf-8"></script>
 ```
 Note that some `apg-lib` functions return results as HTML strings. `apglib.css` is required to properly style the HTML elements.
-
 In your web page JavaSript code you can now access the apg-lib modules through the `apglib` object.
 For example, to create a parser
 ````
 var my-parser = new apglib.parser();
 ````
 
-See the [browser](https://github.com/ldthomas/apg-js2-examples/tree/master/simple/browser), for specifics.
+See the [browser](https://github.com/ldthomas/apg-js2-examples/tree/master/simple/browser) example, for specifics.
 See, also, this [CodePen](http://codepen.io/apg-exp/pen/ZWKGqQ).
 
 **Examples:**  
