@@ -47,6 +47,7 @@ var getBounds = function(length, beg, len) {
 // - *title* - the HTML page `<title>` - defaults to `htmlToPage`.
 exports.htmlToPage = function(html, title) {
   var thisFileName = "utilities.js: ";
+  var emitCss = require("./emitcss.js");
   if (typeof (html) !== "string") {
     throw new Error(thisFileName + "htmlToPage: input HTML is not a string");
   }
@@ -59,7 +60,10 @@ exports.htmlToPage = function(html, title) {
   page += '<head>\n';
   page += '<meta charset="utf-8">\n';
   page += '<title>' + title + '</title>\n';
-  page += '<link rel="stylesheet" href="apglib.css">\n';
+  page += '<style>\n';
+  page += "'" + emitCss() + "'";
+  page += '</style>\n';
+//  page += '<link rel="stylesheet" href="apglib.css">\n';
   page += '</head>\n<body>\n';
   page += '<p>' + new Date() + '</p>\n';
   page += html;
