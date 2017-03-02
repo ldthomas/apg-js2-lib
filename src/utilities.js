@@ -258,6 +258,15 @@ exports.charsToHex = function(chars, beg, len) {
   return ret;
 }
 // Translates a sub-array of character codes to Unicode display format.
+function isUnicode(char){
+  if(char >= 0xD800 && char <= 0xDFFF){
+    return false;
+  }
+  if(char > 0x10FFFF){
+    return false;
+  }
+  return true;
+}
 exports.charsToUnicode = function(chars, beg, len) {
   var ret = "";
   if (!Array.isArray(chars)) {
@@ -265,9 +274,13 @@ exports.charsToUnicode = function(chars, beg, len) {
   }
   var bounds = getBounds(chars.length, beg, len);
   if (bounds.end > bounds.beg) {
-    ret += "U+" + _this.charToHex(chars[bounds.beg]);
-    for (var i = bounds.beg + 1; i < bounds.end; i += 1) {
-      ret += ",U+" + _this.charToHex(chars[i]);
+    for (var i = bounds.beg; i < bounds.end; i += 1) {
+      if(isUnicode(chars[i])){
+        ret += "&#" + chars[i] + ";";
+      }
+      else{
+        ret += " U+" + _this.charToHex(chars[i]);
+      }
     }
   }
   return ret;

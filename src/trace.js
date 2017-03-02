@@ -812,7 +812,7 @@ module.exports = function() {
       phrase = comma + utils.charsToDec(chars, index, length);
       break;
     case MODE_UNICODE:
-      phrase = comma + utils.charsToUnicode(chars, index, length);
+      phrase = utils.charsToUnicode(chars, index, length);
       break;
     case MODE_ASCII:
     default:
