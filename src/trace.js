@@ -329,6 +329,383 @@ module.exports = function() {
       filteredRecords += 1;
     }
   };
+  this.toTreeObject = function(){
+    /* generate the tree nodes */
+    function nodeOpcode(node, opcode){
+      if(opcode){
+        node.op = {id: opcode.type, name: utils.opcodeToString(opcode.type)};
+        node.opData = undefined;
+        switch(opcode.type){
+        case id.RNM:
+          node.opData = rules[opcode.index].name
+          break;
+        case id.UDT:
+          node.opData = udts[opcode.index].name
+          break;
+        case id.BKR:
+          var name, casetype, modetype;
+          if (opcode.index < rules.length) {
+            name = rules[opcode.index].name;
+          } else {
+            name = udts[opcode.index - rules.length].name;
+          }
+          casetype = opcode.bkrCase === id.BKR_MODE_CI ? "%i" : "%s";
+          modetype = opcode.bkrMode === id.BKR_MODE_UM ? "%u" : "%p";
+          node.opData = '\\' + casetype + modetype + name;
+          break;
+        case id.TLS:
+          node.opData = [];
+          for(var i = 0; i < opcode.string.length; i += 1){
+            node.opData.push(opcode.string[i]);
+          }
+          break;
+        case id.TBS:
+          node.opData = [];
+          for(var i = 0; i < opcode.string.length; i += 1){
+            node.opData.push(opcode.string[i]);
+          }
+          break;
+        case id.TRG:
+          node.opData = [opcode.min, opcode.max];
+          break;
+        case id.REP:
+          node.opData = [opcode.min, opcode.max];
+          break;
+        }
+      }else{
+        node.opType = {id: undefined, name: undefined};
+        node.opData = undefined;
+      }
+    }
+    function nodePhrase(state, index, length){
+      var ret = "";
+      if(state === id.MATCH){
+        var ret = "[";
+        for(var i = index; i < index + length; i += 1){
+          if(i > index){
+            ret += ", " + chars[i];
+          }else{
+            ret += chars[i];
+          }
+        }
+        ret += "]";
+        return ret;
+      }
+      if(state === id.NOMATCH){
+        return null;
+      }
+      if(state === id.EMPTY){
+        return null;
+      }
+      return null;
+    }
+    function nodeFactory(parent, record, depth){
+      var op, state, name, casetype, modetype;
+      var node = {
+          id: nodeId++,
+          branch: -1,
+          parent: parent,
+          up: false,
+          depth: depth,
+          children: []
+      }
+      if(record){
+        node.down = true;
+        node.state = {id: record.state, name: utils.stateToString(record.state)};
+        node.phrase = nodePhrase(record.state, record.phraseIndex, record.phraseLength);
+        nodeOpcode(node, record.opcode);
+      }else{
+        node.down = false;
+        node.state = {id: undefined, name: undefined};
+        node.phrase = nodePhrase();
+        nodeOpcode(node, undefined);
+      }
+      return node;
+    }
+    function nodeUp(node, record){
+      if(record){
+        node.up = true;
+        node.state = {id: record.state, name: utils.stateToString(record.state)};
+        node.phrase = nodePhrase(record.state, record.phraseIndex, record.phraseLength);
+        if(!node.down){
+          nodeOpcode(node, record.opcode);
+        }
+      }
+    }
+    function indent(n, offset){
+      var ret = "";
+      offset = (offset < 0) ? 0: offset;
+      for(var i = 0; i < (n - offset); i += 1){
+        ret += "  ";
+      }
+      return ret;
+    }
+    function display(node, offset, comma){
+      var ret = '';
+      var inset = indent(node.depth, offset) + '  ';
+      var inset1 = inset + ' ';
+      ret += inset + '{';
+      ret += '\n';
+      ret += inset1 + 'id: ' +node.id + ',';
+      ret += '\n';
+      ret += inset1 + 'branch: ' +node.branch + ',';
+      ret += '\n';
+      ret += inset1 + 'down: ' + node.down + ',';
+      ret += '\n';
+      ret += inset1 + 'up: ' + node.up + ',';
+      ret += '\n';
+      ret += inset1 + 'state: {id: '+node.state.id+', name: "'+node.state.name+'"},';
+      ret += '\n';
+      ret += inset1 + 'op: {id: '+node.op.id+', name: "'+node.op.name+'"},';
+      ret += '\n';
+      if(typeof(node.opData) === "string"){
+        ret += inset1 + 'opData: "'+node.opData+'",';
+      }else if(Array.isArray(node.opData)){
+        ret += inset1 + 'opData: [';
+        for(var i = 0; i < node.opData.length; i += 1){
+          if(i > 0){
+            ret += ','
+          }
+          ret += node.opData[i];
+        }
+        ret += '],'
+      }else{
+        ret += inset1 + 'opData: undefined,';
+      }
+      ret += '\n';
+      ret += inset1 + 'phrase: '+node.phrase+',';
+      ret += '\n';
+      ret += inset1 + 'depth: ' + node.depth + ',';
+      ret += '\n';
+      if(node.children.length === 0){
+        ret += inset1 + 'children: []';
+      }else{
+        ret += inset1 + 'children: [';
+        ret += '\n';
+        for(var i = 0; i < node.children.length; i += 1){
+          var c = (i === (node.children.length -1)) ? false: true;
+          ret += display(node.children[i], offset, c);
+        }
+        ret += inset1 + ']';
+      }
+      ret += '\n';
+      ret += inset + '}';
+      if(comma){
+        ret += ',';
+      }
+      ret += '\n';
+      return ret;
+    }
+    var nodeId = -1;
+    var branch = [];
+    var node, root, parent;
+    var record, c;
+    var first = true;
+    root = nodeFactory(null, null, -1);
+    node = root;
+    branch.push(node);
+    var index = 0;
+    circular.forEach(function(lineIndex, index) {
+      record = records[lineIndex];
+      if(first){
+        first = false;
+        if(record.depth > 0){
+          /* push some dummy nodes to fill in for missing records. */
+          for( var i = 0; i < record.depth; i += 1){
+            parent = node;
+            node = nodeFactory(node, null, i);
+            branch.push(node);
+            if(parent){
+              parent.children.push(node);
+            }
+//            if(node.parent){
+//              node.parent.children.push(node);
+//            }
+          }
+        }
+      }
+      
+      if(!record.dirUp){
+        /* handle the next record down */
+        parent = node;
+        node = nodeFactory(node, record, record.depth);
+        branch.push(node);
+        if(parent){
+          parent.children.push(node);
+        }
+//        if(node.parent){
+//          node.parent.children.push(node);
+//        }
+      }else{
+        /* handle the next record up */
+        node = branch.pop();
+        if(node){
+          nodeUp(node, record);
+          node = (branch.length === 0) ? null : branch[branch.length -1];
+//          node = node.parent;
+        }
+      }
+    });
+    if(branch.length > 0){
+      /* walk it up to root node */
+      while(branch.length > 0){
+        node = branch.pop();
+        nodeUp(node, null);
+      }
+    }
+    /* find the tree root */
+    // TBD: may need some boundary conditions for special cases
+    var treeRoot = root;
+    if(treeRoot.children.length === 0){
+      throw new Error("trace.toTreeObject(): parse tree has no nodes")
+    }
+    treeRoot = treeRoot.children[0];
+    if(treeRoot.down || treeRoot.up){
+      /* the parse tree root is the grammar start rule node */
+    }else{
+      /* walk down to the first populated node, tree root is the psuedo node parent */
+      var prev;
+      while(treeRoot && !(treeRoot.down || treeRoot.up)){
+        prev = treeRoot;
+        treeRoot = treeRoot.children[0];
+      }
+      treeRoot = prev;
+    }
+    
+    /* walk the final tree for max tree depth and number of leaf nodes */
+    var treeDepth = 0;
+    var leafNodes = 0;
+    var depth = -1;
+    var branchCount = 1;
+    function walk(node){
+      node.branch = branchCount;
+      depth +=1;
+      if(depth > treeDepth){
+        treeDepth = depth;
+      }
+      if(node.children.length === 0){
+        leafNodes += 1;
+      }else{
+        for(var i = 0; i < node.children.length; i += 1){
+          if(i > 0){
+            branchCount += 1;
+          }
+          walk(node.children[i]);
+        }
+      }
+      depth -= 1;
+    }
+    walk(treeRoot);
+    treeRoot.branch = 0;
+    
+    
+    /* validate that current node is root node */
+//    console.log("\nparse tree nodes:");
+//    console.log("max records: " + circular.maxSize());
+//    console.log("total records: " + circular.items());
+//  console.log("temp root:");
+//  console.log(display(root, root.depth, false));
+//    console.log("\nfound root:");
+//    console.log(display(treeRoot, treeRoot.depth, false));
+//    return "trace.toTreeObject(): early exit";
+    
+    /* generate the exported string object*/
+    var str = '';
+    str += '// generated by apg-lib.trace.toTreeObject()';
+    str += '\n';
+    str += 'var treeJson = {';
+    str += '\n';
+    str += '  /* the input string character codes*/\n';
+    str += '  string: [';
+    for(var i = 0; i < chars.length; i += 1){
+      str += (i > 0) ? ','+chars[i] : chars[i];
+    }
+    str += '],\n';
+    /* generate the exported rule names */
+    str += '\n';
+    str += '  /* the grammar rule names */\n';
+    str += '  rules: [';
+    for(var i = 0; i < rules.length; i += 1){
+      if(i > 0){
+        str += ', ';
+      }
+      str += '"' + rules[i].name + '"';
+    }
+    str += '],\n';
+    /* generate the exported UDT names*/
+    str += '\n';
+    str += '  /* the grammar UDT names */\n';
+    str += '  udts: [';
+    for(var i = 0; i < udts.length; i += 1){
+      if(i > 0){
+        str += ', ';
+      }
+      str += '"' + udts[i].name + '"';
+    }
+    str += '],\n';
+    /* generate the ids */
+    str += '\n';
+    str += '  /* the trace record ids */\n';
+    str += '  id: {';
+    str += '\n';
+    str += '      ALT: {id: '+id.ALT+', name: "ALT"},';
+    str += '\n';
+    str += '      CAT: {id: '+id.CAT+', name: "CAT"},';
+    str += '\n';
+    str += '      REP: {id: '+id.REP+', name: "REP"},';
+    str += '\n';
+    str += '      RNM: {id: '+id.RNM+', name: "RNM"},';
+    str += '\n';
+    str += '      TLS: {id: '+id.TLS+', name: "TLS"},';
+    str += '\n';
+    str += '      TBS: {id: '+id.TBS+', name: "TBS"},';
+    str += '\n';
+    str += '      TRG: {id: '+id.TRG+', name: "TRG"},';
+    str += '\n';
+    str += '      UDT: {id: '+id.UDT+', name: "UDT"},';
+    str += '\n';
+    str += '      AND: {id: '+id.AND+', name: "AND"},';
+    str += '\n';
+    str += '      NOT: {id: '+id.NOT+', name: "NOT"},';
+    str += '\n';
+    str += '      BKR: {id: '+id.BKR+', name: "BKR"},';
+    str += '\n';
+    str += '      BKA: {id: '+id.BKA+', name: "BKA"},';
+    str += '\n';
+    str += '      BKN: {id: '+id.BKN+', name: "BKN"},';
+    str += '\n';
+    str += '      ABG: {id: '+id.ABG+', name: "ABG"},';
+    str += '\n';
+    str += '      AEN: {id: '+id.AEN+', name: "AEN"},';
+    str += '\n';
+    str += '      ACTIVE: {id: '+id.ACTIVE+', name: "ACTIVE"},';
+    str += '\n';
+    str += '      MATCH: {id: '+id.MATCH+', name: "MATCH"},';
+    str += '\n';
+    str += '      EMPTY: {id: '+id.EMPTY+', name: "EMPTY"},';
+    str += '\n';
+    str += '      NOMATCH: {id: '+id.NOMATCH+', name: "NOMATCH"},';
+    str += '\n';
+    str += '  },\n';
+    /* generate the max tree depth */
+    str += '\n';
+    str += '  /* the maximum tree depth */\n';
+    str += '  treeDepth: ' + treeDepth + ',';
+    str += '\n';
+    /* generate the number of leaf nodes (branches) */
+    str += '\n';
+    str += '  /* the number of leaf nodes (branches) */\n';
+    str += '  leafNodes: ' + leafNodes + ',';
+    str += '\n';
+    /* generate the exported tree object*/
+    str += '\n';
+    str += '  /* the traced parse tree object */\n';
+    str += '  tree: \n';
+    str += display(treeRoot, treeRoot.depth, false);
+    str += '}';
+    str += '\n';
+    return str;
+  }
   // Translate the trace records to HTML format.
   // - *modearg* - can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`.
   // Determines the format of the string character code display.

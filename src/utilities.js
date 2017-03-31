@@ -201,6 +201,26 @@ exports.opcodeToString = function(type) {
   }
   return ret;
 };
+//Translates an state identifier into a human-readable string.
+exports.stateToString = function(state) {
+  var id = require("./identifiers.js");
+  var ret = 'unknown';
+  switch (state) {
+  case id.ACTIVE:
+    ret = 'ACTIVE';
+    break;
+  case id.MATCH:
+    ret = 'MATCH';
+    break;
+  case id.EMPTY:
+    ret = 'EMPTY';
+    break;
+  case id.NOMATCH:
+    ret = 'NOMATCH';
+    break;
+  }
+  return ret;
+};
 // Array which translates all 128, 7-bit ASCII character codes to their respective HTML format.
 exports.asciiChars = [ "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL", "BS", "TAB", "LF", "VT", "FF", "CR", "SO", "SI",
     "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB", "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", '&nbsp;', "!",
@@ -253,6 +273,19 @@ exports.charsToHex = function(chars, beg, len) {
     ret += "\\x" + _this.charToHex(chars[bounds.beg]);
     for (var i = bounds.beg + 1; i < bounds.end; i += 1) {
       ret += ",\\x" + _this.charToHex(chars[i]);
+    }
+  }
+  return ret;
+}
+exports.charsToHtmlEntities = function(chars, beg, len) {
+  var ret = "";
+  if (!Array.isArray(chars)) {
+    throw new Error(thisFileName + "charsToHex: input must be an array of integers");
+  }
+  var bounds = getBounds(chars.length, beg, len);
+  if (bounds.end > bounds.beg) {
+    for (var i = bounds.beg; i < bounds.end; i += 1) {
+      ret += "&#x"+chars[i].toString(16)+";";
     }
   }
   return ret;
