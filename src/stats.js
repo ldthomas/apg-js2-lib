@@ -117,7 +117,6 @@ module.exports = function() {
       break;
     default:
       throw thisFileName + "collect(): incStat(): unrecognized state: " + state;
-      break;
     }
   }
   /* helper for toHtml() */
@@ -219,7 +218,6 @@ module.exports = function() {
   //   - "alpha" - additionally, display the hit counts for the individual `RNM` and `UDT` operators by name alphabetically.
   // - *caption* - optional caption for the table
   this.toHtml = function(type, caption) {
-    var display = displayOpsOnly;
     var html = "";
     html += '<table class="'+style.CLASS_STATS+'">\n';
     if (typeof (caption) === "string") {

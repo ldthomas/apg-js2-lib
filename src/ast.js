@@ -129,7 +129,7 @@ module.exports = function() {
   //        passed to the callback functions by the translator
   //```
   this.translate = function(data) {
-    var ret, call, callback, record;
+    var ret, callback, record;
     for (var i = 0; i < records.length; i += 1) {
       record = records[i];
       callback = nodeCallbacks[record.callbackIndex];
@@ -197,7 +197,7 @@ module.exports = function() {
       }
     }
     var xml = "";
-    var i, j, depth = 0;
+    var depth = 0;
     xml += '<?xml version="1.0" encoding="utf-8"?>\n';
     xml += '<root nodes="' + records.length / 2 + '" characters="' + chars.length + '">\n';
     xml += '<!-- input string, '+caption+' -->\n';

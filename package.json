@@ -2,7 +2,7 @@
   "name": "apg-lib",
   "version": "3.0.0",
   "description": "Library of core parsing modules required by apg and apg-generated parsers.",
-  "main": "./src/export.js",
+  "main": "./src/exports.js",
   "scripts": {
     "test": "apg -v"
   },
@@ -22,7 +22,7 @@
     "ABNF"
   ],
   "dependencies": {
-    "apg-conv": "1.x"
+    "apg-conv-api": "1.x"
   },
   "repository": {
     "type": "git",

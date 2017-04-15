@@ -84,12 +84,9 @@ module.exports = function() {
   var operatorFilter = [];
   var ruleFilter = [];
   /* special trace table phrases */
-  var PHRASE_END_CHAR = "&bull;";
-  var PHRASE_CONTINUE_CHAR = "&hellip;";
   var PHRASE_END = '<span class="' + style.CLASS_LINEEND + '">&bull;</span>';
   var PHRASE_CONTINUE = '<span class="' + style.CLASS_LINEEND + '">&hellip;</span>';
   var PHRASE_EMPTY = '<span class="' + style.CLASS_EMPTY + '">&#120634;</span>';
-  var PHRASE_NOMATCH = '<span class="' + style.CLASS_NOMATCH + '">&#120636;</span>';
   /* filter the non-RNM & non-UDT operators */
   var initOperatorFilter = function() {
     var setOperators = function(set) {
@@ -378,9 +375,7 @@ module.exports = function() {
       break;
     default:
       throw new Error(thisFileName + "htmlHeader: unrecognized mode: " + mode);
-      break;
     }
-    var title = "trace";
     var header = '';
     header += '<p>display mode: ' + modeName + '</p>\n';
     header += '<table class="'+style.CLASS_TRACE+'">\n';
@@ -450,7 +445,7 @@ module.exports = function() {
       return "";
     }
     var html = '';
-    var line, thisLine, thatLine, lookAhead, lookBehind, lookAround, anchor;
+    var thisLine, thatLine, lookAhead, lookBehind, lookAround, anchor;
     html += '<tr><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th>';
     html += '<th>operator</th><th>phrase</th></tr>\n';
     circular.forEach(function(lineIndex, index) {
@@ -568,9 +563,8 @@ module.exports = function() {
   var displayTrg = function(mode, op) {
     var html = "";
     if (op.type === id.TRG) {
-      var min, max, hex;
       if (mode === MODE_HEX || mode === MODE_UNICODE) {
-        hex = op.min.toString(16).toUpperCase();
+        var hex = op.min.toString(16).toUpperCase();
         if (hex.length % 2 !== 0) {
           hex = "0" + hex;
         }
@@ -591,9 +585,8 @@ module.exports = function() {
   var displayRep = function(mode, op) {
     var html = "";
     if (op.type === id.REP) {
-      var min, max, hex;
       if (mode === MODE_HEX) {
-        hex = op.min.toString(16).toUpperCase();
+        var hex = op.min.toString(16).toUpperCase();
         if (hex.length % 2 !== 0) {
           hex = "0" + hex;
         }

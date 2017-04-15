@@ -9,7 +9,6 @@ module.exports = function() {
   var thisFileName = "circular-buffer.js: ";
   var itemIndex = -1;
   var maxListSize = 0;
-  var forward = true;
   // Initialize buffer.<br>
   // *size* is `maxListSize`, the maximum number of records saved before overwriting begins.
   this.init = function(size) {
