@@ -22,7 +22,7 @@
     "ABNF"
   ],
   "dependencies": {
-    "apg-conv-api": "1.x"
+    "apg-conv-api": "1.0.x"
   },
   "repository": {
     "type": "git",
