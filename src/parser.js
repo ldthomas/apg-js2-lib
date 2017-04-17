@@ -14,7 +14,6 @@ module.exports = function() {
   var _this = this;
   var id = require("./identifiers.js");
   var utils = require("./utilities.js");
-  var converter = require("apg-conv");
   this.ast = null;
   this.stats = null;
   this.trace = null;
@@ -43,10 +42,10 @@ module.exports = function() {
     var functionName = thisFileName + "evaluateRule(): ";
     var length;
     if (ruleIndex >= rules.length) {
-      throw new Error(functionsName + "rule index: " + ruleIndex + " out of range");
+      throw new Error(functionName + "rule index: " + ruleIndex + " out of range");
     }
     if ((phraseIndex >= charsEnd)) {
-      throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
+      throw new Error(functionName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
     opcodes.push({
@@ -64,10 +63,10 @@ module.exports = function() {
     var functionName = thisFileName + "evaluateUdt(): ";
     var length;
     if (udtIndex >= udts.length) {
-      throw new Error(functionsName + "udt index: " + udtIndex + " out of range");
+      throw new Error(functionName + "udt index: " + udtIndex + " out of range");
     }
     if ((phraseIndex >= charsEnd)) {
-      throw new Error(functionsName + "phrase index: " + phraseIndex + " out of range");
+      throw new Error(functionName + "phrase index: " + phraseIndex + " out of range");
     }
     length = opcodes.length;
     opcodes.push({
@@ -480,7 +479,6 @@ module.exports = function() {
     switch (sysData.state) {
     case id.ACTIVE:
       throw new Error(functionName + "final state should never be 'ACTIVE'");
-      break;
     case id.NOMATCH:
       success = false;
       break;
@@ -647,7 +645,6 @@ module.exports = function() {
     default:
       throw new Error(thisFileName + "opRNM(" + rule.name + "): callback function return error. Unrecognized return state: "
           + sysData.state);
-      break;
     }
   }
   // The `RNM` operator.<br>
@@ -734,7 +731,6 @@ module.exports = function() {
     switch (sysData.state) {
     case id.ACTIVE:
       throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. ACTIVE state not allowed.");
-      break;
     case id.EMPTY:
       if (udt.empty === false) {
         throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. May not return EMPTY.");
@@ -757,7 +753,6 @@ module.exports = function() {
     default:
       throw new Error(thisFileName + "opUDT(" + udt.name + "): callback function return error. Unrecognized return state: "
           + sysData.state);
-      break;
     }
   }
   // The `UDT` operator.<br>
@@ -823,8 +818,6 @@ module.exports = function() {
   // if it succeedsand NOMATCH if it fails.
   // *Always* backtracks on any matched phrase and returns EMPTY on success.
   var opAND = function(opIndex, phraseIndex, sysData) {
-    var op, prdResult;
-    op = opcodes[opIndex];
     lookAround.push({
       lookAround : id.LOOKAROUND_AHEAD,
       anchor : phraseIndex,
@@ -859,8 +852,6 @@ module.exports = function() {
   // *Always* backtracks on any matched phrase and returns EMPTY
   // on success (failure of its child node).
   var opNOT = function(opIndex, phraseIndex, sysData) {
-    var op, prdResult;
-    op = opcodes[opIndex];
     lookAround.push({
       lookAround : id.LOOKAROUND_AHEAD,
       anchor : phraseIndex,
@@ -956,7 +947,6 @@ module.exports = function() {
   // An anchor matches a position rather than a phrase.
   // Returns EMPTY if `phraseIndex` is 0, NOMATCH otherwise.
   var opABG = function(opIndex, phraseIndex, sysData) {
-    var op = opcodes[opIndex];
     sysData.state = id.NOMATCH;
     sysData.phraseLength = 0;
     sysData.state = (phraseIndex === 0) ? id.EMPTY : id.NOMATCH;
@@ -966,7 +956,6 @@ module.exports = function() {
   // An anchor matches a position rather than a phrase.
   // Returns EMPTY if `phraseIndex` equals the input string length, NOMATCH otherwise.
   var opAEN = function(opIndex, phraseIndex, sysData) {
-    var op = opcodes[opIndex];
     sysData.state = id.NOMATCH;
     sysData.phraseLength = 0;
     sysData.state = (phraseIndex === chars.length) ? id.EMPTY : id.NOMATCH;
@@ -1036,7 +1025,7 @@ module.exports = function() {
   // Returns the EMPTY state if a match is found, NOMATCH otherwise.
   // Like the look ahead operators, it always backtracks to `phraseIndex`.
   var opBKA = function(opIndex, phraseIndex, sysData) {
-    var op, prdResult;
+    var op;
     op = opcodes[opIndex];
     lookAround.push({
       lookAround : id.LOOKAROUND_BEHIND,
@@ -1065,7 +1054,7 @@ module.exports = function() {
   // Returns the EMPTY state if a match is *not* found, NOMATCH otherwise.
   // Like the look ahead operators, it always backtracks to `phraseIndex`.
   var opBKN = function(opIndex, phraseIndex, sysData) {
-    var op, prdResult;
+    var op;
     op = opcodes[opIndex];
     lookAround.push({
       lookAround : id.LOOKAROUND_BEHIND,

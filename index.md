@@ -13,7 +13,7 @@
 > [circular-buffer.js](./circular-buffer.html)<br>
 
 0. Module to export the entire library from a single module. This is the file that loads with the statement `require("apg-lib");`
-> [export.js](./export.html)<br>
+> [exports.js](./exports.html)<br>
 
 0. Numerical identifiers used throughout `apg` and `apg-lib` to identify operators, states, etc.
 > [identifiers.js](./identifiers.html)<br>
@@ -31,9 +31,7 @@ matching phrases from the input string as it goes.
 0. A library of utility functions and objects.
 > [utilities.js](./utilities.html)<br>
 
-0. Use apg-lib in a web page. Used to "browserify" apg-lib to apglib.js & apglib-min.js for use in a web page.
-> [apglib-gen.js](./apglib-gen.html)<br>
-
-0. The export function. Exports all of the necessary apg-lib modules upon request("apg-lib');
-> [export.js](./export.html)<br>
+0. This module has been developed programmatically in the `apg-lib` build process.
+It is used by the `apg.html` application to build web pages on the fly.
+> [emitcss.js](./emitcss.html)<br>
 

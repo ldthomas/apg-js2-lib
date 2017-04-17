@@ -4,7 +4,7 @@
 "use strict";
 var thisFileName = "utilities.js: ";
 var style = require('./style.js');
-var converter = require("apg-conv");
+var converter = require("apg-conv-api").converter;
 var _this = this;
 /* translate (implied) phrase beginning character and length to actual first and last character indexes */
 /* used by multiple phrase handling functions */
@@ -63,7 +63,6 @@ exports.htmlToPage = function(html, title) {
   page += '<style>\n';
   page += "'" + emitCss() + "'";
   page += '</style>\n';
-//  page += '<link rel="stylesheet" href="apglib.css">\n';
   page += '</head>\n<body>\n';
   page += '<p>' + new Date() + '</p>\n';
   page += html;
@@ -90,7 +89,7 @@ exports.htmlToPage = function(html, title) {
 exports.parserResultToHtml = function(result, caption) {
   var id = require("./identifiers.js");
   var cap = null;
-  if (typeof (caption === "string") && caption !== "") {
+  if (typeof (caption ) === "string" && caption !== "") {
     cap = caption;
   }
   var success, state;
@@ -140,9 +139,28 @@ exports.parserResultToHtml = function(result, caption) {
 // Translates a sub-array of integer character codes into a string.
 // Very useful in callback functions to translate the matched phrases into strings.
 exports.charsToString = function(chars, phraseIndex, phraseLength) {
-  var ar = chars.slice(phraseIndex, phraseIndex+phraseLength);
-  var buf = converter.encode("UTF16LE", ar);
-  return buf.toString("utf16le");
+  var beg, end, ar;
+  if(typeof(phraseIndex) === "number"){
+    if(phraseIndex >= chars.length){
+      return "";
+    }
+    beg = phraseIndex < 0 ? 0 : phraseIndex;
+  }else{
+    beg = 0;
+  }
+  if(typeof(phraseLength) === "number"){
+    if(phraseLength <= 0){
+      return "";
+    }
+    end = phraseLength > (chars.length - beg) ? chars.length : beg + phraseLength;
+  }else{
+    end = chars.length;
+  }
+  if(beg < end){
+    return converter.encode("UTF16LE", chars.slice(beg, end)).toString("utf16le");
+  }else{
+    return "";
+  }
 }
 // Translates a string into an array of integer character codes.
 exports.stringToChars = function(string) {
@@ -356,7 +374,7 @@ exports.charsToAsciiHtml = function(chars, beg, len) {
     throw new Error(thisFileName + "charsToAsciiHtml: input must be an array of integers");
   }
   var html = "";
-  var char, ctrl;
+  var char;
   var bounds = getBounds(chars.length, beg, len);
   for (var i = bounds.beg; i < bounds.end; i += 1) {
     char = chars[i];
