@@ -12,9 +12,11 @@ webpack-input
 **html/
 **RemoteSystemsTempFiles/
 **node_modules/
+**nbproject/
 **docs/
 **test/
 **work/
 **work-save/
 **dev/
 
+/nbproject/private/
