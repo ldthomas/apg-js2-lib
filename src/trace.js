@@ -238,22 +238,30 @@ module.exports = function () {
   // Set the maximum number of records to keep (default = 5000).
   // Each record number larger than `maxRecords`
   // will result in deleting the previously oldest record.
+  // - `max`: maximum number of records to retain (default = 5000)
+  // - `last`: last record number to retain, (default = -1 for (unknown) actual last record)
   this.setMaxRecords = function (max, last) {
+    lastRecord = -1;
     if (typeof (max) === "number" && max > 0) {
       maxRecords = Math.ceil(max);
+    }else{
+      maxRecords = 0;
+      return;
     }
     if (typeof (last) === "number") {
       lastRecord = Math.floor(last);
       if (lastRecord < 0) {
         lastRecord = -1;
-      } else if (lastRecord < maxRecords) {
-        lastRecord = maxRecords;
       }
     }
   };
   // Returns `maxRecords` to the caller.
   this.getMaxRecords = function () {
     return maxRecords;
+  };
+  // Returns `lastRecord` to the caller.
+  this.getLastRecord = function () {
+    return lastRecord;
   };
   /* Called only by the `parser.js` object. No verification of input. */
   this.init = function (rulesIn, udtsIn, charsIn) {
@@ -289,7 +297,10 @@ module.exports = function () {
     return ret;
   };
   var filterRecords = function (record) {
-    if ((lastRecord === -1) || (record <= lastRecord)) {
+    if (lastRecord === -1) {
+      return true;
+    }
+    if (record <= lastRecord) {
       return true;
     }
     return false;
@@ -340,6 +351,7 @@ module.exports = function () {
     }
   };
   var toTree = function (obj, varname) {
+    /* private functions */
     /* generate the tree nodes */
     function nodeOpcode(node, opcode) {
       if (opcode) {
@@ -408,8 +420,7 @@ module.exports = function () {
       }
       return null;
     }
-    function nodeFactory(parent, record, depth) {
-      var op, state, name, casetype, modetype;
+    function nodeDown(parent, record, depth) {
       var node = {
         id: nodeId++,
         branch: -1,
@@ -417,11 +428,11 @@ module.exports = function () {
         up: false,
         depth: depth,
         children: []
-      }
+      };
       if (record) {
         node.down = true;
         node.state = {id: record.state, name: utils.stateToString(record.state)};
-        node.phrase = nodePhrase(record.state, record.phraseIndex, record.phraseLength);
+        node.phrase = null;
         nodeOpcode(node, record.opcode);
       } else {
         node.down = false;
@@ -458,6 +469,8 @@ module.exports = function () {
       ret += inset1 + 'id: ' + node.id + ',';
       ret += '\n';
       ret += inset1 + 'branch: ' + node.branch + ',';
+      ret += '\n';
+      ret += inset1 + 'branchType: "' + node.branchType + '",';
       ret += '\n';
       ret += inset1 + 'down: ' + node.down + ',';
       ret += '\n';
@@ -509,16 +522,16 @@ module.exports = function () {
       ret += '\n';
       return ret;
     }
+
+    /* construct the tree beginning here */
     var nodeId = -1;
     var branch = [];
-    var node, root, parent;
-    var record, c;
+    var node, root, parent, record;
     var first = true;
-    root = nodeFactory(null, null, -1);
+    root = nodeDown(null, null, -1);
     node = root;
     branch.push(node);
-    var index = 0;
-    circular.forEach(function (lineIndex, index) {
+    circular.forEach(function (lineIndex) {
       record = records[lineIndex];
       if (first) {
         first = false;
@@ -526,36 +539,28 @@ module.exports = function () {
           /* push some dummy nodes to fill in for missing records. */
           for (var i = 0; i < record.depth; i += 1) {
             parent = node;
-            node = nodeFactory(node, null, i);
+            node = nodeDown(node, null, i);
             branch.push(node);
             if (parent) {
               parent.children.push(node);
             }
-//            if(node.parent){
-//              node.parent.children.push(node);
-//            }
           }
         }
       }
-
-      if (!record.dirUp) {
-        /* handle the next record down */
-        parent = node;
-        node = nodeFactory(node, record, record.depth);
-        branch.push(node);
-        if (parent) {
-          parent.children.push(node);
-        }
-//        if(node.parent){
-//          node.parent.children.push(node);
-//        }
-      } else {
+      if (record.dirUp) {
         /* handle the next record up */
         node = branch.pop();
         if (node) {
           nodeUp(node, record);
           node = (branch.length === 0) ? null : branch[branch.length - 1];
-//          node = node.parent;
+        }
+      } else {
+        /* handle the next record down */
+        parent = node;
+        node = nodeDown(node, record, record.depth);
+        branch.push(node);
+        if (parent) {
+          parent.children.push(node);
         }
       }
     });
@@ -570,7 +575,7 @@ module.exports = function () {
     // TBD: may need some boundary conditions for special cases
     var treeRoot = root;
     if (treeRoot.children.length === 0) {
-      throw new Error("trace.toTreeObject(): parse tree has no nodes");
+      throw new Error("trace.toTree(): parse tree has no nodes");
     }
     treeRoot = treeRoot.children[0];
     if (treeRoot.down || treeRoot.up) {
@@ -586,12 +591,26 @@ module.exports = function () {
     }
 
     /* walk the final tree for max tree depth and number of leaf nodes */
-    var treeDepth = 0;
-    var leafNodes = 0;
-    var depth = -1;
-    var branchCount = 1;
+    function branchType(node){
+      var type;
+      if(node.down){
+        if(node.up){
+          type = "complete";
+        }else{
+          type = "right";
+        }
+      }else{
+        if (node.up) {
+          type = "left";
+        } else {
+          type = "both";
+        }
+      }
+      return type;
+    }
     function walk(node) {
       node.branch = branchCount;
+      node.branchType = bt;
       depth += 1;
       if (depth > treeDepth) {
         treeDepth = depth;
@@ -602,27 +621,22 @@ module.exports = function () {
         for (var i = 0; i < node.children.length; i += 1) {
           if (i > 0) {
             branchCount += 1;
+            bt = branchType(node.children[i]);
           }
           walk(node.children[i]);
         }
       }
       depth -= 1;
     }
+    var treeDepth = 0;
+    var leafNodes = 0;
+    var depth = -1;
+    var branchCount = 1;
+    var bt = branchType(treeRoot);
     walk(treeRoot);
-    treeRoot.branch = 0;
+//    treeRoot.branch = 0;
 
-
-    /* validate that current node is root node */
-//    console.log("\nparse tree nodes:");
-//    console.log("max records: " + circular.maxSize());
-//    console.log("total records: " + circular.items());
-//  console.log("temp root:");
-//  console.log(display(root, root.depth, false));
-//    console.log("\nfound root:");
-//    console.log(display(treeRoot, treeRoot.depth, false));
-//    return "trace.toTreeObject(): early exit";
-
-    /* generate the exported string object*/
+    /* generate the exported object*/
     var str = '';
     str += '{';
     str += '\n';
@@ -726,7 +740,7 @@ module.exports = function () {
     if (typeof (varname) === "string") {
       pre += varname + ' = ';
     } else {
-      pre += "var traceTree = ";
+      pre += "var parseTree = ";
     }
     return pre + str;
   };
@@ -735,12 +749,12 @@ module.exports = function () {
     return eval("(function(){return " + toTree(true) + ";})()");
   };
   // return the trace tree as a string representing a JavaScript object variable definition
-  // - varname: must include the `var` keyword unless it is a module export
+  // - varname: should include the `var` keyword unless it is a module export
   // - examples:
-  // - module.exports
-  // - exports.name
-  // - var myTreeName
-  // - defaults to "var traceTree"
+  // - "module.exports"
+  // - "exports.name"
+  // - "var myTreeName"
+  // - defaults to "var parseTree"
   this.toTreeSource = function (varname) {
     return toTree(false, varname);
   };
