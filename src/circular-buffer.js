@@ -5,7 +5,7 @@
 // any actual records. It is used by [`trace.js`](./trace.html) for limiting the number of 
 // trace records saved.
 module.exports = function() {
-  "use strict;"
+  "use strict;";
   var thisFileName = "circular-buffer.js: ";
   var itemIndex = -1;
   var maxListSize = 0;
@@ -13,7 +13,7 @@ module.exports = function() {
   // *size* is `maxListSize`, the maximum number of records saved before overwriting begins.
   this.init = function(size) {
     if (typeof (size) !== "number" || size <= 0) {
-      throw new Error(thisFileName + "init: circular buffer size must an integer > 0")
+      throw new Error(thisFileName + "init: circular buffer size must an integer > 0");
     }
     maxListSize = Math.ceil(size);
     itemIndex = -1;
@@ -27,13 +27,13 @@ module.exports = function() {
   // Returns `maxListSize` - the maximum number of records to keep in the buffer.
   this.maxSize = function() {
     return maxListSize;
-  }
+  };
   // Returns the highest number of items saved.<br>
   // (The number of items is the actual number of records processed
   // even though only `maxListSize` records are actually retained.)
   this.items = function() {
     return itemIndex + 1;
-  }
+  };
   // Returns the record number associated with this item index.
   this.getListIndex = function(item) {
     if (itemIndex === -1) {
@@ -46,7 +46,7 @@ module.exports = function() {
       return -1;
     }
     return (item + maxListSize) % maxListSize;
-  }
+  };
   // The iterator over the circular buffer.
   // The user's function, `fn`, will be called with arguments `fn(listIndex, itemIndex)`
   // where `listIndex` is the saved record index and `itemIndex` is the actual item index.
@@ -67,5 +67,5 @@ module.exports = function() {
       var listIndex = (i + maxListSize) % maxListSize;
       fn(listIndex, i);
     }
-  }
-}
+  };
+};

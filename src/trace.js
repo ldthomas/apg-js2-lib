@@ -244,7 +244,7 @@ module.exports = function () {
     lastRecord = -1;
     if (typeof (max) === "number" && max > 0) {
       maxRecords = Math.ceil(max);
-    }else{
+    } else {
       maxRecords = 0;
       return;
     }
@@ -350,9 +350,9 @@ module.exports = function () {
       filteredRecords += 1;
     }
   };
+  /* convert the trace records to a tree of nodes */
   var toTree = function (obj, varname) {
-    /* private functions */
-    /* generate the tree nodes */
+    /* private helper functions */
     function nodeOpcode(node, opcode) {
       if (opcode) {
         node.op = {id: opcode.type, name: utils.opcodeToString(opcode.type)};
@@ -395,7 +395,7 @@ module.exports = function () {
             break;
         }
       } else {
-        node.opType = {id: undefined, name: undefined};
+        node.op = {id: undefined, name: undefined};
         node.opData = undefined;
       }
     }
@@ -426,6 +426,7 @@ module.exports = function () {
         branch: -1,
         parent: parent,
         up: false,
+        down: false,
         depth: depth,
         children: []
       };
@@ -435,7 +436,6 @@ module.exports = function () {
         node.phrase = null;
         nodeOpcode(node, record.opcode);
       } else {
-        node.down = false;
         node.state = {id: undefined, name: undefined};
         node.phrase = nodePhrase();
         nodeOpcode(node, undefined);
@@ -452,6 +452,33 @@ module.exports = function () {
         }
       }
     }
+    /* walk the final tree: label branches and count leaf nodes */
+    function walk(node) {
+      depth += 1;
+      node.branch = branchCount;
+      if (depth > treeDepth) {
+        treeDepth = depth;
+      }
+      if (node.children.length === 0) {
+        leafNodes += 1;
+      } else {
+        for (var i = 0; i < node.children.length; i += 1) {
+          if (i > 0) {
+            branchCount += 1;
+          }
+          node.children[i].leftMost = false;
+          node.children[i].rightMost = false;
+          if (node.leftMost) {
+            node.children[i].leftMost = (i === 0) ? true : false;
+          }
+          if(node.rightMost){
+            node.children[i].rightMost = (i === node.children.length - 1) ? true : false;
+          }
+          walk(node.children[i]);
+        }
+      }
+      depth -= 1;
+    }
     function indent(n, offset) {
       var ret = "";
       offset = (offset < 0) ? 0 : offset;
@@ -461,6 +488,7 @@ module.exports = function () {
       return ret;
     }
     function display(node, offset, comma) {
+      var name;
       var ret = '';
       var inset = indent(node.depth, offset) + '  ';
       var inset1 = inset + ' ';
@@ -470,15 +498,15 @@ module.exports = function () {
       ret += '\n';
       ret += inset1 + 'branch: ' + node.branch + ',';
       ret += '\n';
-      ret += inset1 + 'branchType: "' + node.branchType + '",';
+      ret += inset1 + 'leftMost: ' + node.leftMost + ',';
       ret += '\n';
-      ret += inset1 + 'down: ' + node.down + ',';
+      ret += inset1 + 'rightMost: ' + node.rightMost + ',';
       ret += '\n';
-      ret += inset1 + 'up: ' + node.up + ',';
+      name = (node.state.name) ? '"'+node.state.name + '"' : '"ACTIVE"';
+      ret += inset1 + 'state: {id: ' + node.state.id + ', name: ' + name + '},';
       ret += '\n';
-      ret += inset1 + 'state: {id: ' + node.state.id + ', name: "' + node.state.name + '"},';
-      ret += '\n';
-      ret += inset1 + 'op: {id: ' + node.op.id + ', name: "' + node.op.name + '"},';
+      name = (node.op.name) ? '"'+node.op.name + '"' : '"?"';
+      ret += inset1 + 'op: {id: ' + node.op.id + ', name: ' + name + '},';
       ret += '\n';
       if (typeof (node.opData) === "string") {
         ret += inset1 + 'opData: "' + node.opData + '",';
@@ -526,115 +554,77 @@ module.exports = function () {
     /* construct the tree beginning here */
     var nodeId = -1;
     var branch = [];
-    var node, root, parent, record;
-    var first = true;
-    root = nodeDown(null, null, -1);
-    node = root;
-    branch.push(node);
-    circular.forEach(function (lineIndex) {
+    var root, node, dummy, parent, record;
+    var firstRecord = true;
+    var firstDown = false;
+    /* push a dummy node so the root node will have a non-null parent*/
+    dummy = nodeDown(null, null, -1);
+    branch.push(dummy);
+    node = dummy;
+    circular.forEach(function (lineIndex, index) {
       record = records[lineIndex];
-      if (first) {
-        first = false;
+      if (firstRecord) {
+        firstRecord = false;
         if (record.depth > 0) {
-          /* push some dummy nodes to fill in for missing records. */
+          /* push some dummy nodes to fill in for missing records */
           for (var i = 0; i < record.depth; i += 1) {
             parent = node;
             node = nodeDown(node, null, i);
             branch.push(node);
-            if (parent) {
-              parent.children.push(node);
-            }
+            parent.children.push(node);
           }
         }
       }
       if (record.dirUp) {
         /* handle the next record up */
-        node = branch.pop();
-        if (node) {
-          nodeUp(node, record);
-          node = (branch.length === 0) ? null : branch[branch.length - 1];
+        if(firstDown){
+          node = branch.pop();
+        }else{
+          node = nodeDown(node, null, i);
         }
+        nodeUp(node, record);
+        node = branch[branch.length - 1];
       } else {
         /* handle the next record down */
+        firstDown = true;
         parent = node;
         node = nodeDown(node, record, record.depth);
         branch.push(node);
-        if (parent) {
-          parent.children.push(node);
-        }
+        parent.children.push(node);
       }
     });
-    if (branch.length > 0) {
-      /* walk it up to root node */
-      while (branch.length > 0) {
-        node = branch.pop();
-        nodeUp(node, null);
-      }
+    
+    /* if not at root, walk it up to root */
+    while (branch.length > 1) {
+      node = branch.pop();
+      nodeUp(node, null);
     }
-    /* find the tree root */
-    // TBD: may need some boundary conditions for special cases
-    var treeRoot = root;
-    if (treeRoot.children.length === 0) {
+    /* maybe redundant or paranoid tests: these should never happen */
+    if (dummy.children.length === 0) {
       throw new Error("trace.toTree(): parse tree has no nodes");
     }
-    treeRoot = treeRoot.children[0];
-    if (treeRoot.down || treeRoot.up) {
-      /* the parse tree root is the grammar start rule node */
-    } else {
-      /* walk down to the first populated node, tree root is the psuedo node parent */
-      var prev;
-      while (treeRoot && !(treeRoot.down || treeRoot.up)) {
-        prev = treeRoot;
-        treeRoot = treeRoot.children[0];
-      }
-      treeRoot = prev;
+    if (branch.length === 0) {
+      throw new Error("trace.toTree(): integrity check: dummy root node disappeared?");
     }
+    
+    /* if no record for start rule: find the pseudo root node (first dummy node above a real node) */
+    root = dummy.children[0];
+    var prev = root;
+    while (root && !root.down  && !root.up) {
+      prev = root;
+      root = root.children[0];
+    }
+    root = prev;
 
-    /* walk the final tree for max tree depth and number of leaf nodes */
-    function branchType(node){
-      var type;
-      if(node.down){
-        if(node.up){
-          type = "complete";
-        }else{
-          type = "right";
-        }
-      }else{
-        if (node.up) {
-          type = "left";
-        } else {
-          type = "both";
-        }
-      }
-      return type;
-    }
-    function walk(node) {
-      node.branch = branchCount;
-      node.branchType = bt;
-      depth += 1;
-      if (depth > treeDepth) {
-        treeDepth = depth;
-      }
-      if (node.children.length === 0) {
-        leafNodes += 1;
-      } else {
-        for (var i = 0; i < node.children.length; i += 1) {
-          if (i > 0) {
-            branchCount += 1;
-            bt = branchType(node.children[i]);
-          }
-          walk(node.children[i]);
-        }
-      }
-      depth -= 1;
-    }
+    /* walk the tree of nodes: label brances and count leaves */
     var treeDepth = 0;
     var leafNodes = 0;
     var depth = -1;
     var branchCount = 1;
-    var bt = branchType(treeRoot);
-    walk(treeRoot);
-//    treeRoot.branch = 0;
+    root.leftMost = true;
+    root.rightMost = true;
+    walk(root);
+    root.branch = 0;
 
     /* generate the exported object*/
     var str = '';
@@ -722,11 +712,30 @@ module.exports = function () {
     str += '  /* the number of leaf nodes (branches) */\n';
     str += '  leafNodes: ' + leafNodes + ',';
     str += '\n';
+    /* generate the types of the left- and right-most branches */
+    str += '\n';
+    str += '  /* are the left- and right-most branches complete */\n';
+    var branchesIncomplete;
+    if (root.down) {
+      if (root.up) {
+        branchesIncomplete = "none";
+      } else {
+        branchesIncomplete = "right";
+      }
+    } else {
+      if (root.up) {
+        branchesIncomplete = "left";
+      } else {
+        branchesIncomplete = "both";
+      }
+    }
+    str += '  branchesIncomplete: "' + branchesIncomplete + '",';
+    str += '\n';
     /* generate the exported tree object*/
     str += '\n';
     str += '  /* the traced parse tree object */\n';
     str += '  tree: \n';
-    str += display(treeRoot, treeRoot.depth, false);
+    str += display(root, root.depth, false);
     str += '};';
     str += '\n';
 
