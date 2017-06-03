@@ -351,7 +351,7 @@ module.exports = function () {
     }
   };
   /* convert the trace records to a tree of nodes */
-  var toTree = function (obj, varname) {
+  var toTreeObj = function (obj, varname) {
     /* private helper functions */
     function nodeOpcode(node, opcode) {
       if (opcode) {
@@ -373,7 +373,7 @@ module.exports = function () {
             }
             casetype = opcode.bkrCase === id.BKR_MODE_CI ? "%i" : "%s";
             modetype = opcode.bkrMode === id.BKR_MODE_UM ? "%u" : "%p";
-            node.opData = '\\' + casetype + modetype + name;
+            node.opData = '\\\\' + casetype + modetype + name;
             break;
           case id.TLS:
             node.opData = [];
@@ -479,76 +479,39 @@ module.exports = function () {
       }
       depth -= 1;
     }
-    function indent(n, offset) {
-      var ret = "";
-      offset = (offset < 0) ? 0 : offset;
-      for (var i = 0; i < (n - offset); i += 1) {
-        ret += "  ";
-      }
-      return ret;
-    }
     function display(node, offset, comma) {
       var name;
-      var ret = '';
-      var inset = indent(node.depth, offset) + '  ';
-      var inset1 = inset + ' ';
-      ret += inset + '{';
-      ret += '\n';
-      ret += inset1 + 'id: ' + node.id + ',';
-      ret += '\n';
-      ret += inset1 + 'branch: ' + node.branch + ',';
-      ret += '\n';
-      ret += inset1 + 'leftMost: ' + node.leftMost + ',';
-      ret += '\n';
-      ret += inset1 + 'rightMost: ' + node.rightMost + ',';
-      ret += '\n';
-      name = (node.state.name) ? '"'+node.state.name + '"' : '"ACTIVE"';
-      ret += inset1 + 'state: {id: ' + node.state.id + ', name: ' + name + '},';
-      ret += '\n';
-      name = (node.op.name) ? '"'+node.op.name + '"' : '"?"';
-      ret += inset1 + 'op: {id: ' + node.op.id + ', name: ' + name + '},';
-      ret += '\n';
+      var obj = {};
+      obj.id = node.id;
+      obj.branch = node.branch;
+      obj.leftMost = node.leftMost;
+      obj.rightMost = node.rightMost;
+      name = (node.state.name) ? node.state.name : 'ACTIVE';
+      obj.state = {id: node.state.id, name: name};
+      name = (node.op.name) ? node.op.name : '?';
+      obj.op = {id: node.op.id, name: name};
       if (typeof (node.opData) === "string") {
-        ret += inset1 + 'opData: "' + node.opData + '",';
+        obj.opData = node.opData;
       } else if (Array.isArray(node.opData)) {
-        ret += inset1 + 'opData: [';
+        obj.opData = [];
         for (var i = 0; i < node.opData.length; i += 1) {
-          if (i > 0) {
-            ret += ',';
-          }
-          ret += node.opData[i];
+          obj.opData[i] = node.opData[i];
         }
-        ret += '],';
       } else {
-        ret += inset1 + 'opData: undefined,';
+        obj.opData = undefined;
       }
-      ret += '\n';
       if (node.phrase) {
-        ret += inset1 + 'phrase: {index: ' + node.phrase.index + ', length: ' + node.phrase.length + '},';
+        obj.phrase = {index: node.phrase.index, length: node.phrase.length};
       } else {
-        ret += inset1 + 'phrase: null,';
+        obj.phrase = null;
       }
-      ret += '\n';
-      ret += inset1 + 'depth: ' + node.depth + ',';
-      ret += '\n';
-      if (node.children.length === 0) {
-        ret += inset1 + 'children: []';
-      } else {
-        ret += inset1 + 'children: [';
-        ret += '\n';
-        for (var i = 0; i < node.children.length; i += 1) {
-          var c = (i === (node.children.length - 1)) ? false : true;
-          ret += display(node.children[i], offset, c);
-        }
-        ret += inset1 + ']';
+      obj.depth = node.depth;
+      obj.children = [];
+      for (var i = 0; i < node.children.length; i += 1) {
+        var c = (i === (node.children.length - 1)) ? false : true;
+        obj.children[i] = display(node.children[i], offset, c);
       }
-      ret += '\n';
-      ret += inset + '}';
-      if (comma) {
-        ret += ',';
-      }
-      ret += '\n';
-      return ret;
+      return obj;
     }
 
     /* construct the tree beginning here */
@@ -567,7 +530,8 @@ module.exports = function () {
         firstRecord = false;
         if (record.depth > 0) {
           /* push some dummy nodes to fill in for missing records */
-          for (var i = 0; i < record.depth; i += 1) {
+          var num = record.dirUp ? record.depth+1 : record.depth;
+          for (var i = 0; i < num; i += 1) {
             parent = node;
             node = nodeDown(node, null, i);
             branch.push(node);
@@ -577,11 +541,7 @@ module.exports = function () {
       }
       if (record.dirUp) {
         /* handle the next record up */
-        if(firstDown){
-          node = branch.pop();
-        }else{
-          node = nodeDown(node, null, i);
-        }
+        node = branch.pop();
         nodeUp(node, record);
         node = branch[branch.length - 1];
       } else {
@@ -627,94 +587,47 @@ module.exports = function () {
     root.branch = 0;
 
     /* generate the exported object*/
-    var str = '';
-    str += '{';
-    str += '\n';
-    str += '  /* the input string character codes*/\n';
-    str += '  string: [';
+    var obj = {};
+    obj.string = [];
     for (var i = 0; i < chars.length; i += 1) {
-      str += (i > 0) ? ',' + chars[i] : chars[i];
+      obj.string[i] = chars[i];
     }
-    str += '],\n';
     /* generate the exported rule names */
-    str += '\n';
-    str += '  /* the grammar rule names */\n';
-    str += '  rules: [';
+    obj.rules = [];
     for (var i = 0; i < rules.length; i += 1) {
-      if (i > 0) {
-        str += ', ';
-      }
-      str += '"' + rules[i].name + '"';
+      obj.rules[i] = rules[i].name;
     }
-    str += '],\n';
     /* generate the exported UDT names*/
-    str += '\n';
-    str += '  /* the grammar UDT names */\n';
-    str += '  udts: [';
+    obj.udts = [];
     for (var i = 0; i < udts.length; i += 1) {
-      if (i > 0) {
-        str += ', ';
-      }
-      str += '"' + udts[i].name + '"';
+      obj.udts[i] = udts[i].name;
     }
-    str += '],\n';
     /* generate the ids */
-    str += '\n';
-    str += '  /* the trace record ids */\n';
-    str += '  id: {';
-    str += '\n';
-    str += '      ALT: {id: ' + id.ALT + ', name: "ALT"},';
-    str += '\n';
-    str += '      CAT: {id: ' + id.CAT + ', name: "CAT"},';
-    str += '\n';
-    str += '      REP: {id: ' + id.REP + ', name: "REP"},';
-    str += '\n';
-    str += '      RNM: {id: ' + id.RNM + ', name: "RNM"},';
-    str += '\n';
-    str += '      TLS: {id: ' + id.TLS + ', name: "TLS"},';
-    str += '\n';
-    str += '      TBS: {id: ' + id.TBS + ', name: "TBS"},';
-    str += '\n';
-    str += '      TRG: {id: ' + id.TRG + ', name: "TRG"},';
-    str += '\n';
-    str += '      UDT: {id: ' + id.UDT + ', name: "UDT"},';
-    str += '\n';
-    str += '      AND: {id: ' + id.AND + ', name: "AND"},';
-    str += '\n';
-    str += '      NOT: {id: ' + id.NOT + ', name: "NOT"},';
-    str += '\n';
-    str += '      BKR: {id: ' + id.BKR + ', name: "BKR"},';
-    str += '\n';
-    str += '      BKA: {id: ' + id.BKA + ', name: "BKA"},';
-    str += '\n';
-    str += '      BKN: {id: ' + id.BKN + ', name: "BKN"},';
-    str += '\n';
-    str += '      ABG: {id: ' + id.ABG + ', name: "ABG"},';
-    str += '\n';
-    str += '      AEN: {id: ' + id.AEN + ', name: "AEN"},';
-    str += '\n';
-    str += '      ACTIVE: {id: ' + id.ACTIVE + ', name: "ACTIVE"},';
-    str += '\n';
-    str += '      MATCH: {id: ' + id.MATCH + ', name: "MATCH"},';
-    str += '\n';
-    str += '      EMPTY: {id: ' + id.EMPTY + ', name: "EMPTY"},';
-    str += '\n';
-    str += '      NOMATCH: {id: ' + id.NOMATCH + ', name: "NOMATCH"}';
-    str += '\n';
-    str += '  },\n';
+    obj.id = {};
+    obj.id.ALT = {id: id.ALT, name: "ALT"};
+    obj.id.CAT = {id: id.CAT, name: "CAT"};
+    obj.id.REP = {id: id.REP, name: "REP"};
+    obj.id.RNM = {id: id.RNM, name: "RNM"};
+    obj.id.TLS = {id: id.TLS, name: "TLS"};
+    obj.id.TBS = {id: id.TBS, name: "TBS"};
+    obj.id.TRG = {id: id.TRG, name: "TRG"};
+    obj.id.UDT = {id: id.UDT, name: "UDT"};
+    obj.id.AND = {id: id.AND, name: "AND"};
+    obj.id.NOT = {id: id.NOT, name: "NOT"};
+    obj.id.BKR = {id: id.BKR, name: "BKR"};
+    obj.id.BKA = {id: id.BKA, name: "BKA"};
+    obj.id.BKN = {id: id.BKN, name: "BKN"};
+    obj.id.ABG = {id: id.ABG, name: "ABG"};
+    obj.id.AEN = {id: id.AEN, name: "AEN"};
+    obj.id.ACTIVE = {id: id.ACTIVE, name: "ACTIVE"};
+    obj.id.MATCH = {id: id.MATCH, name: "MATCH"};
+    obj.id.EMPTY = {id: id.EMPTY, name: "EMPTY"};
+    obj.id.NOMATCH = {id: id.NOMATCH, name: "NOMATCH"};
     /* generate the max tree depth */
-    str += '\n';
-    str += '  /* the maximum tree depth */\n';
-    str += '  treeDepth: ' + treeDepth + ',';
-    str += '\n';
+    obj.treeDepth = treeDepth;
     /* generate the number of leaf nodes (branches) */
-    str += '\n';
-    str += '  /* the number of leaf nodes (branches) */\n';
-    str += '  leafNodes: ' + leafNodes + ',';
-    str += '\n';
+    obj.leafNodes = leafNodes;
     /* generate the types of the left- and right-most branches */
-    str += '\n';
-    str += '  /* are the left- and right-most branches complete */\n';
     var branchesIncomplete;
     if (root.down) {
       if (root.up) {
@@ -729,29 +642,26 @@ module.exports = function () {
         branchesIncomplete = "both";
       }
     }
-    str += '  branchesIncomplete: "' + branchesIncomplete + '",';
-    str += '\n';
-    /* generate the exported tree object*/
-    str += '\n';
-    str += '  /* the traced parse tree object */\n';
-    str += '  tree: \n';
-    str += display(root, root.depth, false);
-    str += '};';
-    str += '\n';
-
-    if (obj) {
-      return str;
+    obj.branchesIncomplete = branchesIncomplete;
+    obj.tree = display(root, root.depth, false);
+    return obj;
+  };
+  this.toTree = function(asString){
+    var obj = toTreeObj();
+    if(asString){
+      return JSON.stringify(obj);
     }
-
-    var pre = "";
-    pre += '// generated by apg-lib.trace.toTreeSource()';
-    pre += '\n';
-    if (typeof (varname) === "string") {
-      pre += varname + ' = ';
-    } else {
-      pre += "var parseTree = ";
+    return obj;
+  };
+  this.toTreeSelect = function(varname){
+    var obj = eval("(function(){return " + toTree(true) + ";})()");
+    if(typeof(varname) === "string"){
+      if(varname === ""){
+        return "'" + JSON.stringify(obj) + "'";
+      }
+      return varname + " = '" + JSON.stringify(obj) + "'";
     }
-    return pre + str;
+    return obj;
   };
   // return the trace tree as a JavaScript object
   this.toTreeObject = function () {
