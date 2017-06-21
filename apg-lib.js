@@ -202,7 +202,7 @@ var getBounds = function(length, beg, len) {
 // - *title* - the HTML page `<title>` - defaults to `htmlToPage`.
 exports.htmlToPage = function(html, title) {
   var thisFileName = "utilities.js: ";
-  var emitcss = __webpack_require__(6);
+  var emitCss = __webpack_require__(6);
   if (typeof (html) !== "string") {
     throw new Error(thisFileName + "htmlToPage: input HTML is not a string");
   }
@@ -215,9 +215,9 @@ exports.htmlToPage = function(html, title) {
   page += '<head>\n';
   page += '<meta charset="utf-8">\n';
   page += '<title>' + title + '</title>\n';
-  page += "<style>\n";
-  page += emitcss();
-  page += "</style>\n";
+  page += '<style>\n';
+  page += "'" + emitCss() + "'";
+  page += '</style>\n';
   page += '</head>\n<body>\n';
   page += '<p>' + new Date() + '</p>\n';
   page += html;
@@ -294,9 +294,28 @@ exports.parserResultToHtml = function(result, caption) {
 // Translates a sub-array of integer character codes into a string.
 // Very useful in callback functions to translate the matched phrases into strings.
 exports.charsToString = function(chars, phraseIndex, phraseLength) {
-  var ar = chars.slice(phraseIndex, phraseIndex+phraseLength);
-  var buf = converter.encode("UTF16LE", ar);
-  return buf.toString("utf16le");
+  var beg, end, ar;
+  if(typeof(phraseIndex) === "number"){
+    if(phraseIndex >= chars.length){
+      return "";
+    }
+    beg = phraseIndex < 0 ? 0 : phraseIndex;
+  }else{
+    beg = 0;
+  }
+  if(typeof(phraseLength) === "number"){
+    if(phraseLength <= 0){
+      return "";
+    }
+    end = phraseLength > (chars.length - beg) ? chars.length : beg + phraseLength;
+  }else{
+    end = chars.length;
+  }
+  if(beg < end){
+    return converter.encode("UTF16LE", chars.slice(beg, end)).toString("utf16le");
+  }else{
+    return "";
+  }
 }
 // Translates a string into an array of integer character codes.
 exports.stringToChars = function(string) {
@@ -351,6 +370,26 @@ exports.opcodeToString = function(type) {
     break;
   case id.AEN:
     ret = 'AEN';
+    break;
+  }
+  return ret;
+};
+//Translates an state identifier into a human-readable string.
+exports.stateToString = function(state) {
+  var id = __webpack_require__(0);
+  var ret = 'unknown';
+  switch (state) {
+  case id.ACTIVE:
+    ret = 'ACTIVE';
+    break;
+  case id.MATCH:
+    ret = 'MATCH';
+    break;
+  case id.EMPTY:
+    ret = 'EMPTY';
+    break;
+  case id.NOMATCH:
+    ret = 'NOMATCH';
     break;
   }
   return ret;
@@ -411,7 +450,29 @@ exports.charsToHex = function(chars, beg, len) {
   }
   return ret;
 }
+exports.charsToHtmlEntities = function(chars, beg, len) {
+  var ret = "";
+  if (!Array.isArray(chars)) {
+    throw new Error(thisFileName + "charsToHex: input must be an array of integers");
+  }
+  var bounds = getBounds(chars.length, beg, len);
+  if (bounds.end > bounds.beg) {
+    for (var i = bounds.beg; i < bounds.end; i += 1) {
+      ret += "&#x"+chars[i].toString(16)+";";
+    }
+  }
+  return ret;
+}
 // Translates a sub-array of character codes to Unicode display format.
+function isUnicode(char){
+  if(char >= 0xD800 && char <= 0xDFFF){
+    return false;
+  }
+  if(char > 0x10FFFF){
+    return false;
+  }
+  return true;
+}
 exports.charsToUnicode = function(chars, beg, len) {
   var ret = "";
   if (!Array.isArray(chars)) {
@@ -419,9 +480,13 @@ exports.charsToUnicode = function(chars, beg, len) {
   }
   var bounds = getBounds(chars.length, beg, len);
   if (bounds.end > bounds.beg) {
-    ret += "U+" + _this.charToHex(chars[bounds.beg]);
-    for (var i = bounds.beg + 1; i < bounds.end; i += 1) {
-      ret += ",U+" + _this.charToHex(chars[i]);
+    for (var i = bounds.beg; i < bounds.end; i += 1) {
+      if(isUnicode(chars[i])){
+        ret += "&#" + chars[i] + ";";
+      }
+      else{
+        ret += " U+" + _this.charToHex(chars[i]);
+      }
     }
   }
   return ret;
@@ -3295,7 +3360,7 @@ exports.base64 = {
 // any actual records. It is used by [`trace.js`](./trace.html) for limiting the number of 
 // trace records saved.
 module.exports = function() {
-  "use strict;"
+  "use strict;";
   var thisFileName = "circular-buffer.js: ";
   var itemIndex = -1;
   var maxListSize = 0;
@@ -3303,7 +3368,7 @@ module.exports = function() {
   // *size* is `maxListSize`, the maximum number of records saved before overwriting begins.
   this.init = function(size) {
     if (typeof (size) !== "number" || size <= 0) {
-      throw new Error(thisFileName + "init: circular buffer size must an integer > 0")
+      throw new Error(thisFileName + "init: circular buffer size must an integer > 0");
     }
     maxListSize = Math.ceil(size);
     itemIndex = -1;
@@ -3317,13 +3382,13 @@ module.exports = function() {
   // Returns `maxListSize` - the maximum number of records to keep in the buffer.
   this.maxSize = function() {
     return maxListSize;
-  }
+  };
   // Returns the highest number of items saved.<br>
   // (The number of items is the actual number of records processed
   // even though only `maxListSize` records are actually retained.)
   this.items = function() {
     return itemIndex + 1;
-  }
+  };
   // Returns the record number associated with this item index.
   this.getListIndex = function(item) {
     if (itemIndex === -1) {
@@ -3336,7 +3401,7 @@ module.exports = function() {
       return -1;
     }
     return (item + maxListSize) % maxListSize;
-  }
+  };
   // The iterator over the circular buffer.
   // The user's function, `fn`, will be called with arguments `fn(listIndex, itemIndex)`
   // where `listIndex` is the saved record index and `itemIndex` is the actual item index.
@@ -3357,8 +3422,8 @@ module.exports = function() {
       var listIndex = (i + maxListSize) % maxListSize;
       fn(listIndex, i);
     }
-  }
-}
+  };
+};
 
 
 /***/ }),
@@ -6136,7 +6201,7 @@ module.exports = function() {
 // See the function, `setMaxRecords(max)` below. This will result in only the last `max` records being saved. 
 // 
 // (See [`apg-examples`](https://github.com/ldthomas/apg-js2-examples) for examples of using `trace.js`.)
-module.exports = function() {
+module.exports = function () {
   "use strict";
   var thisFileName = "trace.js: ";
   var that = this;
@@ -6166,8 +6231,8 @@ module.exports = function() {
   var PHRASE_CONTINUE = '<span class="' + style.CLASS_LINEEND + '">&hellip;</span>';
   var PHRASE_EMPTY = '<span class="' + style.CLASS_EMPTY + '">&#120634;</span>';
   /* filter the non-RNM & non-UDT operators */
-  var initOperatorFilter = function() {
-    var setOperators = function(set) {
+  var initOperatorFilter = function () {
+    var setOperators = function (set) {
       operatorFilter[id.ALT] = set;
       operatorFilter[id.CAT] = set;
       operatorFilter[id.REP] = set;
@@ -6181,9 +6246,9 @@ module.exports = function() {
       operatorFilter[id.BKN] = set;
       operatorFilter[id.ABG] = set;
       operatorFilter[id.AEN] = set;
-    }
+    };
     var items = 0;
-    for ( var name in that.filter.operators) {
+    for (var name in that.filter.operators) {
       items += 1;
     }
     if (items === 0) {
@@ -6191,7 +6256,7 @@ module.exports = function() {
       setOperators(false);
       return;
     }
-    for ( var name in that.filter.operators) {
+    for (var name in that.filter.operators) {
       var upper = name.toUpperCase();
       if (upper === '<ALL>') {
         /* case 2: <all> operators specified: trace all operators ignore all other operator commands */
@@ -6205,52 +6270,64 @@ module.exports = function() {
       }
     }
     setOperators(false);
-    for ( var name in that.filter.operators) {
+    for (var name in that.filter.operators) {
       var upper = name.toUpperCase();
       /* case 4: one or more individual operators specified: trace 'true' operators only */
       if (upper === 'ALT') {
-        operatorFilter[id.ALT] = (that.filter.operators[name] === true) ? true: false;
+        operatorFilter[id.ALT] = (that.filter.operators[name] === true) ? true : false;
       } else if (upper === 'CAT') {
-        operatorFilter[id.CAT] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.CAT] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'REP') {
-        operatorFilter[id.REP] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.REP] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'AND') {
-        operatorFilter[id.AND] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.AND] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'NOT') {
-        operatorFilter[id.NOT] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.NOT] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'TLS') {
-        operatorFilter[id.TLS] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.TLS] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'TBS') {
-        operatorFilter[id.TBS] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.TBS] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'TRG') {
-        operatorFilter[id.TRG] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.TRG] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'BKR') {
-        operatorFilter[id.BKR] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.BKR] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'BKA') {
-        operatorFilter[id.BKA] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.BKA] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'BKN') {
-        operatorFilter[id.BKN] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.BKN] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'ABG') {
-        operatorFilter[id.ABG] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.ABG] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else if (upper === 'AEN') {
-        operatorFilter[id.AEN] = (that.filter.operators[name] === true) ? true: false;;
+        operatorFilter[id.AEN] = (that.filter.operators[name] === true) ? true : false;
+        ;
       } else {
         throw new Error(thisFileName + "initOpratorFilter: '" + name + "' not a valid operator name."
             + " Must be <all>, <none>, alt, cat, rep, tls, tbs, trg, and, not, bkr, bka or bkn");
       }
     }
-  }
+  };
   /* filter the rule and `UDT` named operators */
-  var initRuleFilter = function() {
-    var setRules = function(set) {
+  var initRuleFilter = function () {
+    var setRules = function (set) {
       operatorFilter[id.RNM] = set;
       operatorFilter[id.UDT] = set;
-      var count = rules.length + udts.length
+      var count = rules.length + udts.length;
       ruleFilter.length = 0;
       for (var i = 0; i < count; i += 1) {
         ruleFilter.push(set);
       }
-    }
+    };
     var items, i, list = [];
     for (i = 0; i < rules.length; i += 1) {
       list.push(rules[i].lower);
@@ -6260,7 +6337,7 @@ module.exports = function() {
     }
     ruleFilter.length = 0;
     items = 0;
-    for ( var name in that.filter.rules) {
+    for (var name in that.filter.rules) {
       items += 1;
     }
     if (items === 0) {
@@ -6268,7 +6345,7 @@ module.exports = function() {
       setRules(true);
       return;
     }
-    for ( var name in that.filter.rules) {
+    for (var name in that.filter.rules) {
       var lower = name.toLowerCase();
       if (lower === '<all>') {
         /* case 2: trace all rules ignore all other rule commands */
@@ -6285,43 +6362,52 @@ module.exports = function() {
     setRules(false);
     operatorFilter[id.RNM] = true;
     operatorFilter[id.UDT] = true;
-    for ( var name in that.filter.rules) {
+    for (var name in that.filter.rules) {
       var lower = name.toLowerCase();
       i = list.indexOf(lower);
       if (i < 0) {
         throw new Error(thisFileName + "initRuleFilter: '" + name + "' not a valid rule or udt name");
       }
-      ruleFilter[i] = (that.filter.rules[name] === true) ? true: false;;
+      ruleFilter[i] = (that.filter.rules[name] === true) ? true : false;
+      ;
     }
-  }
+  };
   /* used by other APG components to verify that they have a valid trace object */
   this.traceObject = "traceObject";
   this.filter = {
-    operators : [],
-    rules : []
-  }
+    operators: [],
+    rules: []
+  };
   // Set the maximum number of records to keep (default = 5000).
   // Each record number larger than `maxRecords`
   // will result in deleting the previously oldest record.
-  this.setMaxRecords = function(max, last) {
+  // - `max`: maximum number of records to retain (default = 5000)
+  // - `last`: last record number to retain, (default = -1 for (unknown) actual last record)
+  this.setMaxRecords = function (max, last) {
+    lastRecord = -1;
     if (typeof (max) === "number" && max > 0) {
       maxRecords = Math.ceil(max);
+    } else {
+      maxRecords = 0;
+      return;
     }
-    if(typeof(last) === "number"){
+    if (typeof (last) === "number") {
       lastRecord = Math.floor(last);
-      if(lastRecord < 0){
+      if (lastRecord < 0) {
         lastRecord = -1;
-      }else if(lastRecord < maxRecords){
-        lastRecord = maxRecords;
       }
     }
-  }
+  };
   // Returns `maxRecords` to the caller.
-  this.getMaxRecords = function() {
+  this.getMaxRecords = function () {
     return maxRecords;
-  }
+  };
+  // Returns `lastRecord` to the caller.
+  this.getLastRecord = function () {
+    return lastRecord;
+  };
   /* Called only by the `parser.js` object. No verification of input. */
-  this.init = function(rulesIn, udtsIn, charsIn) {
+  this.init = function (rulesIn, udtsIn, charsIn) {
     records.length = 0;
     recordStack.length = 0;
     filteredRecords = 0;
@@ -6334,7 +6420,7 @@ module.exports = function() {
     circular.init(maxRecords);
   };
   /* returns true if this records passes through the designated filter, false if the record is to be skipped */
-  var filterOps = function(op) {
+  var filterOps = function (op) {
     var ret = false;
     if (op.type === id.RNM) {
       if (operatorFilter[op.type] && ruleFilter[op.index]) {
@@ -6352,35 +6438,38 @@ module.exports = function() {
       ret = operatorFilter[op.type];
     }
     return ret;
-  }
-  var filterRecords = function(record){
-    if((lastRecord === -1) || (record <= lastRecord)){
+  };
+  var filterRecords = function (record) {
+    if (lastRecord === -1) {
+      return true;
+    }
+    if (record <= lastRecord) {
       return true;
     }
     return false;
-  }
+  };
   /* Collect the "down" record. */
-  this.down = function(op, state, offset, length, anchor, lookAround) {
+  this.down = function (op, state, offset, length, anchor, lookAround) {
     if (filterRecords(filteredRecords) && filterOps(op)) {
       recordStack.push(filteredRecords);
       records[circular.increment()] = {
-        dirUp : false,
-        depth : treeDepth,
-        thisLine : filteredRecords,
-        thatLine : undefined,
-        opcode : op,
-        state : state,
-        phraseIndex : offset,
-        phraseLength : length,
-        lookAnchor : anchor,
-        lookAround : lookAround
+        dirUp: false,
+        depth: treeDepth,
+        thisLine: filteredRecords,
+        thatLine: undefined,
+        opcode: op,
+        state: state,
+        phraseIndex: offset,
+        phraseLength: length,
+        lookAnchor: anchor,
+        lookAround: lookAround
       };
       filteredRecords += 1;
       treeDepth += 1;
     }
   };
   /* Collect the "up" record. */
-  this.up = function(op, state, offset, length, anchor, lookAround) {
+  this.up = function (op, state, offset, length, anchor, lookAround) {
     if (filterRecords(filteredRecords) && filterOps(op)) {
       var thisLine = filteredRecords;
       var thatLine = recordStack.pop();
@@ -6390,25 +6479,328 @@ module.exports = function() {
       }
       treeDepth -= 1;
       records[circular.increment()] = {
-        dirUp : true,
-        depth : treeDepth,
-        thisLine : thisLine,
-        thatLine : thatLine,
-        opcode : op,
-        state : state,
-        phraseIndex : offset,
-        phraseLength : length,
-        lookAnchor : anchor,
-        lookAround : lookAround
+        dirUp: true,
+        depth: treeDepth,
+        thisLine: thisLine,
+        thatLine: thatLine,
+        opcode: op,
+        state: state,
+        phraseIndex: offset,
+        phraseLength: length,
+        lookAnchor: anchor,
+        lookAround: lookAround
       };
       filteredRecords += 1;
     }
   };
-  // Translate the trace records to HTML format.
-  // - *modearg* - can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`.
-  // Determines the format of the string character code display.
-  // - *caption* - optional caption for the HTML table.
-  this.toHtml = function(modearg, caption) {
+  /* convert the trace records to a tree of nodes */
+  var toTreeObj = function (obj, varname) {
+    /* private helper functions */
+    function nodeOpcode(node, opcode) {
+      if (opcode) {
+        node.op = {id: opcode.type, name: utils.opcodeToString(opcode.type)};
+        node.opData = undefined;
+        switch (opcode.type) {
+          case id.RNM:
+            node.opData = rules[opcode.index].name;
+            break;
+          case id.UDT:
+            node.opData = udts[opcode.index].name;
+            break;
+          case id.BKR:
+            var name, casetype, modetype;
+            if (opcode.index < rules.length) {
+              name = rules[opcode.index].name;
+            } else {
+              name = udts[opcode.index - rules.length].name;
+            }
+            casetype = opcode.bkrCase === id.BKR_MODE_CI ? "%i" : "%s";
+            modetype = opcode.bkrMode === id.BKR_MODE_UM ? "%u" : "%p";
+            node.opData = '\\\\' + casetype + modetype + name;
+            break;
+          case id.TLS:
+            node.opData = [];
+            for (var i = 0; i < opcode.string.length; i += 1) {
+              node.opData.push(opcode.string[i]);
+            }
+            break;
+          case id.TBS:
+            node.opData = [];
+            for (var i = 0; i < opcode.string.length; i += 1) {
+              node.opData.push(opcode.string[i]);
+            }
+            break;
+          case id.TRG:
+            node.opData = [opcode.min, opcode.max];
+            break;
+          case id.REP:
+            node.opData = [opcode.min, opcode.max];
+            break;
+        }
+      } else {
+        node.op = {id: undefined, name: undefined};
+        node.opData = undefined;
+      }
+    }
+    function nodePhrase(state, index, length) {
+      if (state === id.MATCH) {
+        return {
+          index: index,
+          length: length
+        };
+      }
+      if (state === id.NOMATCH) {
+        return {
+          index: index,
+          length: 0
+        };
+      }
+      if (state === id.EMPTY) {
+        return {
+          index: index,
+          length: 0
+        };
+      }
+      return null;
+    }
+    function nodeDown(parent, record, depth) {
+      var node = {
+        id: nodeId++,
+        branch: -1,
+        parent: parent,
+        up: false,
+        down: false,
+        depth: depth,
+        children: []
+      };
+      if (record) {
+        node.down = true;
+        node.state = {id: record.state, name: utils.stateToString(record.state)};
+        node.phrase = null;
+        nodeOpcode(node, record.opcode);
+      } else {
+        node.state = {id: undefined, name: undefined};
+        node.phrase = nodePhrase();
+        nodeOpcode(node, undefined);
+      }
+      return node;
+    }
+    function nodeUp(node, record) {
+      if (record) {
+        node.up = true;
+        node.state = {id: record.state, name: utils.stateToString(record.state)};
+        node.phrase = nodePhrase(record.state, record.phraseIndex, record.phraseLength);
+        if (!node.down) {
+          nodeOpcode(node, record.opcode);
+        }
+      }
+    }
+    /* walk the final tree: label branches and count leaf nodes */
+    function walk(node) {
+      depth += 1;
+      node.branch = branchCount;
+      if (depth > treeDepth) {
+        treeDepth = depth;
+      }
+      if (node.children.length === 0) {
+        leafNodes += 1;
+      } else {
+        for (var i = 0; i < node.children.length; i += 1) {
+          if (i > 0) {
+            branchCount += 1;
+          }
+          node.children[i].leftMost = false;
+          node.children[i].rightMost = false;
+          if (node.leftMost) {
+            node.children[i].leftMost = (i === 0) ? true : false;
+          }
+          if(node.rightMost){
+            node.children[i].rightMost = (i === node.children.length - 1) ? true : false;
+          }
+          walk(node.children[i]);
+        }
+      }
+      depth -= 1;
+    }
+    function display(node, offset, comma) {
+      var name;
+      var obj = {};
+      obj.id = node.id;
+      obj.branch = node.branch;
+      obj.leftMost = node.leftMost;
+      obj.rightMost = node.rightMost;
+      name = (node.state.name) ? node.state.name : 'ACTIVE';
+      obj.state = {id: node.state.id, name: name};
+      name = (node.op.name) ? node.op.name : '?';
+      obj.op = {id: node.op.id, name: name};
+      if (typeof (node.opData) === "string") {
+        obj.opData = node.opData;
+      } else if (Array.isArray(node.opData)) {
+        obj.opData = [];
+        for (var i = 0; i < node.opData.length; i += 1) {
+          obj.opData[i] = node.opData[i];
+        }
+      } else {
+        obj.opData = undefined;
+      }
+      if (node.phrase) {
+        obj.phrase = {index: node.phrase.index, length: node.phrase.length};
+      } else {
+        obj.phrase = null;
+      }
+      obj.depth = node.depth;
+      obj.children = [];
+      for (var i = 0; i < node.children.length; i += 1) {
+        var c = (i === (node.children.length - 1)) ? false : true;
+        obj.children[i] = display(node.children[i], offset, c);
+      }
+      return obj;
+    }
+
+    /* construct the tree beginning here */
+    var nodeId = -1;
+    var branch = [];
+    var root, node, dummy, parent, record;
+    var firstRecord = true;
+    /* push a dummy node so the root node will have a non-null parent*/
+    dummy = nodeDown(null, null, -1);
+    branch.push(dummy);
+    node = dummy;
+    circular.forEach(function (lineIndex, index) {
+      record = records[lineIndex];
+      if (firstRecord) {
+        firstRecord = false;
+        if (record.depth > 0) {
+          /* push some dummy nodes to fill in for missing records */
+          var num = record.dirUp ? record.depth+1 : record.depth;
+          for (var i = 0; i < num; i += 1) {
+            parent = node;
+            node = nodeDown(node, null, i);
+            branch.push(node);
+            parent.children.push(node);
+          }
+        }
+      }
+      if (record.dirUp) {
+        /* handle the next record up */
+        node = branch.pop();
+        nodeUp(node, record);
+        node = branch[branch.length - 1];
+      } else {
+        /* handle the next record down */
+        parent = node;
+        node = nodeDown(node, record, record.depth);
+        branch.push(node);
+        parent.children.push(node);
+      }
+    });
+    
+    /* if not at root, walk it up to root */
+    while (branch.length > 1) {
+      node = branch.pop();
+      nodeUp(node, null);
+    }
+    /* maybe redundant or paranoid tests: these should never happen */
+    if (dummy.children.length === 0) {
+      throw new Error("trace.toTree(): parse tree has no nodes");
+    }
+    if (branch.length === 0) {
+      throw new Error("trace.toTree(): integrity check: dummy root node disappeared?");
+    }
+    
+    /* if no record for start rule: find the pseudo root node (first dummy node above a real node) */
+    root = dummy.children[0];
+    var prev = root;
+    while (root && !root.down  && !root.up) {
+      prev = root;
+      root = root.children[0];
+    }
+    root = prev;
+
+    /* walk the tree of nodes: label brances and count leaves */
+    var treeDepth = 0;
+    var leafNodes = 0;
+    var depth = -1;
+    var branchCount = 1;
+    root.leftMost = true;
+    root.rightMost = true;
+    walk(root);
+    root.branch = 0;
+
+    /* generate the exported object*/
+    var obj = {};
+    obj.string = [];
+    for (var i = 0; i < chars.length; i += 1) {
+      obj.string[i] = chars[i];
+    }
+    /* generate the exported rule names */
+    obj.rules = [];
+    for (var i = 0; i < rules.length; i += 1) {
+      obj.rules[i] = rules[i].name;
+    }
+    /* generate the exported UDT names*/
+    obj.udts = [];
+    for (var i = 0; i < udts.length; i += 1) {
+      obj.udts[i] = udts[i].name;
+    }
+    /* generate the ids */
+    obj.id = {};
+    obj.id.ALT = {id: id.ALT, name: "ALT"};
+    obj.id.CAT = {id: id.CAT, name: "CAT"};
+    obj.id.REP = {id: id.REP, name: "REP"};
+    obj.id.RNM = {id: id.RNM, name: "RNM"};
+    obj.id.TLS = {id: id.TLS, name: "TLS"};
+    obj.id.TBS = {id: id.TBS, name: "TBS"};
+    obj.id.TRG = {id: id.TRG, name: "TRG"};
+    obj.id.UDT = {id: id.UDT, name: "UDT"};
+    obj.id.AND = {id: id.AND, name: "AND"};
+    obj.id.NOT = {id: id.NOT, name: "NOT"};
+    obj.id.BKR = {id: id.BKR, name: "BKR"};
+    obj.id.BKA = {id: id.BKA, name: "BKA"};
+    obj.id.BKN = {id: id.BKN, name: "BKN"};
+    obj.id.ABG = {id: id.ABG, name: "ABG"};
+    obj.id.AEN = {id: id.AEN, name: "AEN"};
+    obj.id.ACTIVE = {id: id.ACTIVE, name: "ACTIVE"};
+    obj.id.MATCH = {id: id.MATCH, name: "MATCH"};
+    obj.id.EMPTY = {id: id.EMPTY, name: "EMPTY"};
+    obj.id.NOMATCH = {id: id.NOMATCH, name: "NOMATCH"};
+    /* generate the max tree depth */
+    obj.treeDepth = treeDepth;
+    /* generate the number of leaf nodes (branches) */
+    obj.leafNodes = leafNodes;
+    /* generate the types of the left- and right-most branches */
+    var branchesIncomplete;
+    if (root.down) {
+      if (root.up) {
+        branchesIncomplete = "none";
+      } else {
+        branchesIncomplete = "right";
+      }
+    } else {
+      if (root.up) {
+        branchesIncomplete = "left";
+      } else {
+        branchesIncomplete = "both";
+      }
+    }
+    obj.branchesIncomplete = branchesIncomplete;
+    obj.tree = display(root, root.depth, false);
+    return obj;
+  };
+  // Returns the trace records as JSON parse tree object.
+  // - stringify: if `true`, the object is 'stringified' before returning, otherwise, the object itself is returned.
+  this.toTree = function(stringify){
+    var obj = toTreeObj();
+    if(stringify){
+      return JSON.stringify(obj);
+    }
+    return obj;
+  };
+// Translate the trace records to HTML format.
+// - *modearg* - can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`.
+// Determines the format of the string character code display.
+// - *caption* - optional caption for the HTML table.
+  this.toHtml = function (modearg, caption) {
     /* writes the trace records as a table in a complete html page */
     var mode = MODE_ASCII;
     if (typeof (modearg) === "string" && modearg.length >= 3) {
@@ -6426,48 +6818,48 @@ module.exports = function() {
     html += htmlTable(mode);
     html += htmlFooter();
     return html;
-  }
-  // Translate the trace records to HTML format and create a complete HTML page for browser display.
-  this.toHtmlPage = function(mode, caption, title){
+  };
+// Translate the trace records to HTML format and create a complete HTML page for browser display.
+  this.toHtmlPage = function (mode, caption, title) {
     return utils.htmlToPage(this.toHtml(mode, caption), title);
-  }
+  };
 
   /* From here on down, these are just helper functions for `toHtml()`. */
-  var htmlHeader = function(mode, caption) {
+  var htmlHeader = function (mode, caption) {
     /* open the page */
     /* write the HTML5 header with table style */
     /* open the <table> tag */
     var modeName;
     switch (mode) {
-    case MODE_HEX:
-      modeName = "hexidecimal";
-      break;
-    case MODE_DEC:
-      modeName = "decimal";
-      break;
-    case MODE_ASCII:
-      modeName = "ASCII";
-      break;
-    case MODE_UNICODE:
-      modeName = "UNICODE";
-      break;
-    default:
-      throw new Error(thisFileName + "htmlHeader: unrecognized mode: " + mode);
+      case MODE_HEX:
+        modeName = "hexidecimal";
+        break;
+      case MODE_DEC:
+        modeName = "decimal";
+        break;
+      case MODE_ASCII:
+        modeName = "ASCII";
+        break;
+      case MODE_UNICODE:
+        modeName = "UNICODE";
+        break;
+      default:
+        throw new Error(thisFileName + "htmlHeader: unrecognized mode: " + mode);
     }
     var header = '';
     header += '<p>display mode: ' + modeName + '</p>\n';
-    header += '<table class="'+style.CLASS_TRACE+'">\n';
+    header += '<table class="' + style.CLASS_TRACE + '">\n';
     if (typeof (caption) === "string") {
       header += '<caption>' + caption + '</caption>';
     }
     return header;
-  }
-  var htmlFooter = function() {
+  };
+  var htmlFooter = function () {
     var footer = "";
     /* close the </table> tag */
     footer += '</table>\n';
     /* display a table legend */
-    footer += '<p class="'+style.CLASS_MONOSPACE+'">legend:<br>\n';
+    footer += '<p class="' + style.CLASS_MONOSPACE + '">legend:<br>\n';
     footer += '(a)&nbsp;-&nbsp;line number<br>\n';
     footer += '(b)&nbsp;-&nbsp;matching line number<br>\n';
     footer += '(c)&nbsp;-&nbsp;phrase offset<br>\n';
@@ -6481,11 +6873,11 @@ module.exports = function() {
     footer += 'operator&nbsp;-&nbsp;ALT, CAT, REP, RNM, TRG, TLS, TBS<sup>&dagger;</sup>, UDT, AND, NOT, BKA, BKN, BKR, ABG, AEN<sup>&Dagger;</sup><br>\n';
     footer += 'phrase&nbsp;&nbsp;&nbsp;-&nbsp;up to ' + MAX_PHRASE + ' characters of the phrase being matched<br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_MATCH
-    + '">matched characters</span><br>\n';
+        + '">matched characters</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKAHEAD
-    + '">matched characters in look ahead mode</span><br>\n';
+        + '">matched characters in look ahead mode</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_LOOKBEHIND
-    + '">matched characters in look behind mode</span><br>\n';
+        + '">matched characters in look behind mode</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_REMAINDER
         + '">remainder characters(not yet examined by parser)</span><br>\n';
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;<span class="' + style.CLASS_CTRLCHAR
@@ -6495,7 +6887,7 @@ module.exports = function() {
     footer += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;' + PHRASE_CONTINUE
         + ' input string display truncated<br>\n';
     footer += '</p>\n';
-    footer += '<p class="'+style.CLASS_MONOSPACE+'">\n';
+    footer += '<p class="' + style.CLASS_MONOSPACE + '">\n';
     footer += '<sup>&dagger;</sup>original ABNF operators:<br>\n';
     footer += 'ALT - alternation<br>\n';
     footer += 'CAT - concatenation<br>\n';
@@ -6516,9 +6908,9 @@ module.exports = function() {
     footer += 'AEN - anchor - end of input string<br>\n';
     footer += '</p>\n';
     return footer;
-  }
+  };
   /* Returns the filtered records, formatted as an HTML table. */
-  var htmlTable = function(mode) {
+  var htmlTable = function (mode) {
     if (rules === null) {
       return "";
     }
@@ -6526,7 +6918,7 @@ module.exports = function() {
     var thisLine, thatLine, lookAhead, lookBehind, lookAround, anchor;
     html += '<tr><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th>';
     html += '<th>operator</th><th>phrase</th></tr>\n';
-    circular.forEach(function(lineIndex, index) {
+    circular.forEach(function (lineIndex, index) {
       var line = records[lineIndex];
       thisLine = line.thisLine;
       thatLine = (line.thatLine !== undefined) ? line.thatLine : '--';
@@ -6544,7 +6936,7 @@ module.exports = function() {
         lookAround = true;
         anchor = line.phraseIndex;
       }
-      if (line.lookAround === id.LOOKAROUND_BEHIND){
+      if (line.lookAround === id.LOOKAROUND_BEHIND) {
         lookBehind = true;
         lookAround = true;
         anchor = line.lookAnchor;
@@ -6562,28 +6954,28 @@ module.exports = function() {
       html += '<td>' + line.depth + '</td>';
       html += '<td>';
       switch (line.state) {
-      case id.ACTIVE:
-        html += '<span class="' + style.CLASS_ACTIVE + '">&darr;&nbsp;</span>';
-        break;
-      case id.MATCH:
-        html += '<span class="' + style.CLASS_MATCH + '">&uarr;M</span>';
-        break;
-      case id.NOMATCH:
-        html += '<span class="' + style.CLASS_NOMATCH + '">&uarr;N</span>';
-        break;
-      case id.EMPTY:
-        html += '<span class="' + style.CLASS_EMPTY + '">&uarr;E</span>';
-        break;
-      default:
-        html += '<span class="' + style.CLASS_ACTIVE + '">--</span>';
-        break;
+        case id.ACTIVE:
+          html += '<span class="' + style.CLASS_ACTIVE + '">&darr;&nbsp;</span>';
+          break;
+        case id.MATCH:
+          html += '<span class="' + style.CLASS_MATCH + '">&uarr;M</span>';
+          break;
+        case id.NOMATCH:
+          html += '<span class="' + style.CLASS_NOMATCH + '">&uarr;N</span>';
+          break;
+        case id.EMPTY:
+          html += '<span class="' + style.CLASS_EMPTY + '">&uarr;E</span>';
+          break;
+        default:
+          html += '<span class="' + style.CLASS_ACTIVE + '">--</span>';
+          break;
       }
       html += '</td>';
       html += '<td>';
       html += that.indent(line.depth);
       if (lookAhead) {
         html += '<span class="' + style.CLASS_LOOKAHEAD + '">';
-      }else  if (lookBehind) {
+      } else if (lookBehind) {
         html += '<span class="' + style.CLASS_LOOKBEHIND + '">';
       }
       html += utils.opcodeToString(line.opcode.type);
@@ -6617,9 +7009,9 @@ module.exports = function() {
       html += '<td>';
       if (lookBehind) {
         html += displayBehind(mode, chars, line.state, line.phraseIndex, line.phraseLength, anchor);
-      } else if(lookAhead){
+      } else if (lookAhead) {
         html += displayAhead(mode, chars, line.state, line.phraseIndex, line.phraseLength);
-      }else{
+      } else {
         html += displayNone(mode, chars, line.state, line.phraseIndex, line.phraseLength);
       }
       html += '</td></tr>\n';
@@ -6630,7 +7022,7 @@ module.exports = function() {
     html += '</table>\n';
     return html;
   };
-  this.indent = function(depth) {
+  this.indent = function (depth) {
     var html = '';
     for (var i = 0; i < depth; i += 1) {
       html += '.';
@@ -6638,7 +7030,7 @@ module.exports = function() {
     return html;
   };
   /* format the TRG operator */
-  var displayTrg = function(mode, op) {
+  var displayTrg = function (mode, op) {
     var html = "";
     if (op.type === id.TRG) {
       if (mode === MODE_HEX || mode === MODE_UNICODE) {
@@ -6658,9 +7050,9 @@ module.exports = function() {
       }
     }
     return html;
-  }
+  };
   /* format the REP operator */
-  var displayRep = function(mode, op) {
+  var displayRep = function (mode, op) {
     var html = "";
     if (op.type === id.REP) {
       if (mode === MODE_HEX) {
@@ -6687,9 +7079,9 @@ module.exports = function() {
       }
     }
     return html;
-  }
+  };
   /* format the TBS operator */
-  var displayTbs = function(mode, op) {
+  var displayTbs = function (mode, op) {
     var html = "";
     if (op.type === id.TBS) {
       var len = Math.min(op.string.length, MAX_TLS * 2);
@@ -6720,9 +7112,9 @@ module.exports = function() {
       }
     }
     return html;
-  }
+  };
   /* format the TLS operator */
-  var displayTls = function(mode, op) {
+  var displayTls = function (mode, op) {
     var html = "";
     if (op.type === id.TLS) {
       var len = Math.min(op.string.length, MAX_TLS);
@@ -6766,27 +7158,27 @@ module.exports = function() {
       }
     }
     return html;
-  }
+  };
   /* display phrases matched in look-behind mode */
-  var displayBehind = function(mode, chars, state, index, length, anchor) {
+  var displayBehind = function (mode, chars, state, index, length, anchor) {
     var html = '';
     var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
     var spanBehind = '<span class="' + style.CLASS_LOOKBEHIND + '">';
-    var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
+    var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">';
     var spanend = '</span>';
     var prev = false;
     switch (state) {
-    case id.EMPTY:
-      html += PHRASE_EMPTY;
-    case id.NOMATCH:
-    case id.MATCH:
-    case id.ACTIVE:
-      beg1 = index - length;
-      len1 = anchor - beg1;
-      beg2 = anchor;
-      len2 = chars.length - beg2;
-      break;
+      case id.EMPTY:
+        html += PHRASE_EMPTY;
+      case id.NOMATCH:
+      case id.MATCH:
+      case id.ACTIVE:
+        beg1 = index - length;
+        len1 = anchor - beg1;
+        beg2 = anchor;
+        len2 = chars.length - beg2;
+        break;
     }
     lastchar = PHRASE_END;
     if (len1 > MAX_PHRASE) {
@@ -6797,52 +7189,52 @@ module.exports = function() {
       lastchar = PHRASE_CONTINUE;
       len2 = MAX_PHRASE - len1;
     }
-    if(len1 > 0){
+    if (len1 > 0) {
       html += spanBehind;
       html += subPhrase(mode, chars, beg1, len1, prev);
       html += spanend;
       prev = true;
     }
-    if(len2 > 0){
+    if (len2 > 0) {
       html += spanRemainder;
       html += subPhrase(mode, chars, beg2, len2, prev);
       html += spanend;
     }
     return html + lastchar;
-  }
+  };
   /* display phrases matched in look-ahead mode */
-  var displayAhead = function(mode, chars, state, index, length) {
+  var displayAhead = function (mode, chars, state, index, length) {
     var spanAhead = '<span class="' + style.CLASS_LOOKAHEAD + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
-  }
+  };
   /* display phrases matched in normal parsing mode */
-  var displayNone = function(mode, chars, state, index, length) {
+  var displayNone = function (mode, chars, state, index, length) {
     var spanAhead = '<span class="' + style.CLASS_MATCH + '">';
     return displayForward(mode, chars, state, index, length, spanAhead);
-  }
-  var displayForward = function(mode, chars, state, index, length, spanAhead) {
+  };
+  var displayForward = function (mode, chars, state, index, length, spanAhead) {
     var html = '';
     var beg1, len1, beg2, len2;
     var lastchar = PHRASE_END;
-    var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">'
+    var spanRemainder = '<span class="' + style.CLASS_REMAINDER + '">';
     var spanend = '</span>';
     var prev = false;
     switch (state) {
-    case id.EMPTY:
-      html += PHRASE_EMPTY;
-    case id.NOMATCH:
-    case id.ACTIVE:
-      beg1 = index;
-      len1 = 0;
-      beg2 = index;
-      len2 = chars.length - beg2;
-      break;
-    case id.MATCH:
-      beg1 = index;
-      len1 = length;
-      beg2 = index + len1;
-      len2 = chars.length - beg2;
-      break;
+      case id.EMPTY:
+        html += PHRASE_EMPTY;
+      case id.NOMATCH:
+      case id.ACTIVE:
+        beg1 = index;
+        len1 = 0;
+        beg2 = index;
+        len2 = chars.length - beg2;
+        break;
+      case id.MATCH:
+        beg1 = index;
+        len1 = length;
+        beg2 = index + len1;
+        len2 = chars.length - beg2;
+        break;
     }
     lastchar = PHRASE_END;
     if (len1 > MAX_PHRASE) {
@@ -6853,46 +7245,46 @@ module.exports = function() {
       lastchar = PHRASE_CONTINUE;
       len2 = MAX_PHRASE - len1;
     }
-    if(len1 > 0){
+    if (len1 > 0) {
       html += spanAhead;
       html += subPhrase(mode, chars, beg1, len1, prev);
       html += spanend;
       prev = true;
     }
-    if(len2 > 0){
+    if (len2 > 0) {
       html += spanRemainder;
       html += subPhrase(mode, chars, beg2, len2, prev);
       html += spanend;
     }
     return html + lastchar;
-  }
-  var subPhrase = function(mode, chars, index, length, prev) {
+  };
+  var subPhrase = function (mode, chars, index, length, prev) {
     if (length === 0) {
       return "";
     }
     var phrase = "";
     var comma = prev ? "," : "";
     switch (mode) {
-    case MODE_HEX:
-      phrase = comma + utils.charsToHex(chars, index, length);
-      break;
-    case MODE_DEC:
-      if(prev){
-        return "," + utils.charsToDec(chars, index, length);
-      }
-      phrase = comma + utils.charsToDec(chars, index, length);
-      break;
-    case MODE_UNICODE:
-      phrase = comma + utils.charsToUnicode(chars, index, length);
-      break;
-    case MODE_ASCII:
-    default:
-    phrase = utils.charsToAsciiHtml(chars, index, length);
-      break;
+      case MODE_HEX:
+        phrase = comma + utils.charsToHex(chars, index, length);
+        break;
+      case MODE_DEC:
+        if (prev) {
+          return "," + utils.charsToDec(chars, index, length);
+        }
+        phrase = comma + utils.charsToDec(chars, index, length);
+        break;
+      case MODE_UNICODE:
+        phrase = utils.charsToUnicode(chars, index, length);
+        break;
+      case MODE_ASCII:
+      default:
+        phrase = utils.charsToAsciiHtml(chars, index, length);
+        break;
     }
     return phrase;
-  }
-}
+  };
+};
 
 
 /***/ }),

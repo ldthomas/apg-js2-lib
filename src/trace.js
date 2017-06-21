@@ -519,7 +519,6 @@ module.exports = function () {
     var branch = [];
     var root, node, dummy, parent, record;
     var firstRecord = true;
-    var firstDown = false;
     /* push a dummy node so the root node will have a non-null parent*/
     dummy = nodeDown(null, null, -1);
     branch.push(dummy);
@@ -546,7 +545,6 @@ module.exports = function () {
         node = branch[branch.length - 1];
       } else {
         /* handle the next record down */
-        firstDown = true;
         parent = node;
         node = nodeDown(node, record, record.depth);
         branch.push(node);
@@ -646,36 +644,14 @@ module.exports = function () {
     obj.tree = display(root, root.depth, false);
     return obj;
   };
-  this.toTree = function(asString){
+  // Returns the trace records as JSON parse tree object.
+  // - stringify: if `true`, the object is 'stringified' before returning, otherwise, the object itself is returned.
+  this.toTree = function(stringify){
     var obj = toTreeObj();
-    if(asString){
+    if(stringify){
       return JSON.stringify(obj);
     }
     return obj;
-  };
-  this.toTreeSelect = function(varname){
-    var obj = eval("(function(){return " + toTree(true) + ";})()");
-    if(typeof(varname) === "string"){
-      if(varname === ""){
-        return "'" + JSON.stringify(obj) + "'";
-      }
-      return varname + " = '" + JSON.stringify(obj) + "'";
-    }
-    return obj;
-  };
-  // return the trace tree as a JavaScript object
-  this.toTreeObject = function () {
-    return eval("(function(){return " + toTree(true) + ";})()");
-  };
-  // return the trace tree as a string representing a JavaScript object variable definition
-  // - varname: should include the `var` keyword unless it is a module export
-  // - examples:
-  // - "module.exports"
-  // - "exports.name"
-  // - "var myTreeName"
-  // - defaults to "var parseTree"
-  this.toTreeSource = function (varname) {
-    return toTree(false, varname);
   };
 // Translate the trace records to HTML format.
 // - *modearg* - can be `"ascii"`, `"decimal"`, `"hexidecimal"` or `"unicode"`.
