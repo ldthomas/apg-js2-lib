@@ -40,7 +40,7 @@ Note that some `apg-lib` functions return results as HTML strings. `apglib.css` 
 var my-parser = new apglib.parser();
 ````
 
-See the [browser](https://github.com/ldthomas/apg-js2-examples/tree/master/simple/browser) example, for specifics. See, also, this [CodePen](http://codepen.io/apg-exp/pen/ZWKGqQ).
+See the [browser](https://github.com/ldthomas/apg-js2-examples/blob/master/simple/webpage/browser.html) example, for specifics. See, also, this [CodePen](http://codepen.io/apg-exp/pen/ZWKGqQ).
 
 ### Examples
 See <a href="https://github.com/ldthomas/apg-js2-examples">apg-js2-examples</a> for examples of running JavaScript APG and the parsers it generates.
@@ -53,7 +53,7 @@ npm install -g docco
 ./docco-gen
 ```
 View `docs/index.html` in any web browser to get started.
-Or view it on the [APG website](http://coasttocoastresearch.com/docjs2/apg-lib/index.html)
+Or view it on the [APG website](https://sabnf.com)
 
 #### Copyright
 *Copyright &copy; 2017 Lowell D. Thomas, all rights reserved*  
